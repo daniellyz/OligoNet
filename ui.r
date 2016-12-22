@@ -1,6 +1,7 @@
 library(shiny)
 library(KEGGREST)
 require(visNetwork, quietly = TRUE)
+library(markdown)
 
 textInputRow<-function (inputId, label, value = "") 
 {
@@ -59,6 +60,7 @@ shinyUI(fluidPage(
     # Show network graph
     mainPanel(
       tabsetPanel(
+        tabPanel("Help",includeMarkdown("Help.Rmd")),
         tabPanel("Job Status",verbatimTextOutput("summary")),
         tabPanel("UAAC-Annotation",dataTableOutput("table1")),
         tabPanel("MAAP-Annotation",dataTableOutput("table2")),
@@ -98,13 +100,8 @@ shinyUI(fluidPage(
                                 actionButton("goButton3", "Go!")
                                 ),
                  htmlOutput('image')),
-        tabPanel("About",fluidRow(
-                                br(),
-          
-          
-          
-        ))
-      ),  style='width: 1700px'
+        tabPanel("About",includeMarkdown("About.Rmd"))
+       )
     )
 
 ))

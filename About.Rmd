@@ -1,0 +1,10 @@
+### About
+
+By Youzhong LIU (youzhong.liu@u-bourgogne.fr) and co
+
+Author Affiliation: UMR PAM Université de Bourgogne/Agrosup Dijon, Institut Universitaire de la Vigne et du Vin, Jules Guyot, Rue Claude Ladrey, Dijon, France 
+
+You can find source code of this site <a href="https://github.com/daniellyz/OligoNet">here</a>.
+
+Powered by R Shiny.
+

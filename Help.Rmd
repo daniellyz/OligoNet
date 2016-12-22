@@ -1,0 +1,3 @@
+### Help
+
+Recent technical advances in high-resolution mass spectrometry (MS) have made metabolomics experiments commonplace for a wide variety of disciplines. In most studies, a database search is performed to translate mass signals into concrete metabolites, and to further interpret the data in a biological and genomic context. However, this annotation approach is limited by the size of database, therefore many detected mass signals are classified as unknowns without being further considered. OligoNet implements an alternative method to annotate metabolomics data based on the assumption that some higher-molecular-weight "unknowns" are combinations of repeated subunits (residues). 
