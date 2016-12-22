@@ -90,19 +90,18 @@ shinyServer(function(input, output) {
       
       results=send_curl(mass_list,monomers()$tab,tol1,input$DecompID,dplace) # bielefeld results
       
-      if (results=="No response from the server"){ # If no output from the server
+      if (results$p3=="No response from the server"){ # If no output from the server
           annotated=NULL
           output_message=c(output_message,"The decomposition failed, please submit your job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp")}
         
       else { # If everything OK
           output_message=c(output_message, "Decomposition succeeded! please download decomposition results!")
-          annotated=peptide_annotation(raw_data,additional_data,results,tol2)}
+          output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
+          annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2)}
     }
- save(annotated,file="raw.Rdata")
  list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)
   })
     
-  
   output$summary <- renderPrint({
     output=find_annotation()$output_message
     cat(paste0(output,collapse="\n"))
@@ -181,7 +180,6 @@ shinyServer(function(input, output) {
       
       if ("2" %in% input$visual){
         network=filter_amino_acid(network,monomers()$elements)}
-      save(network,file="network_filtered.Rdata")
   network})
   
   
@@ -409,5 +407,13 @@ output$image<-renderUI({
   tags$img(src=url)
   })
   
- 
+example1 <- eventReactive(input$Example1,{   
+  
+  
+  
+  
+})
+
+
+
 })

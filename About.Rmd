@@ -1,6 +1,6 @@
 ### About
 
-By Youzhong LIU (youzhong.liu@u-bourgogne.fr) and co
+Developped by Youzhong LIU (youzhong.liu@u-bourgogne.fr) 
 
 Author Affiliation: UMR PAM Université de Bourgogne/Agrosup Dijon, Institut Universitaire de la Vigne et du Vin, Jules Guyot, Rue Claude Ladrey, Dijon, France 
 

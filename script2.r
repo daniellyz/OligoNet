@@ -109,9 +109,10 @@ if (DecompID=="Job ID"){
  
 else{
   b3="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/response"
+  id=DecompID
   p3=postForm(b3,.opts=list(postfields=DecompID, httpheader="Content-Type: text/plain",useragent = "RCurl"))
   }
-  return(p3)
+  return(list(p3=p3,id=id))
 }
 
 ### Create KEGG links

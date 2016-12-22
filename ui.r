@@ -24,18 +24,22 @@ shinyUI(fluidPage(
   fluidRow(
     column(4,
          h3('A) Upload metabolomics data'),
-         p('Example of file 1:', a(href = 'https://raw.githubusercontent.com/daniellyz/Curl/master/matrix.txt', 'matrix.txt')),
-         p('Example of file 2:', a(href = 'https://raw.githubusercontent.com/daniellyz/Curl/master/matrix_additional.txt', 'matrix_additional.txt')),
          
          fileInput('file1', 'File 1: ID + Neutral Mass + Intensities',
                    accept = c('dat/tab-separated-value','text/tab-separated-values')),
          fileInput('file2', 'File 2: ID + Additional Informations (Optional)',
-                   accept = c('dat/tab-separated-value','text/tab-separated-values'))),
+                   accept = c('dat/tab-separated-value','text/tab-separated-values')),
+         
+         actionButton("Example1", "Run Example 1: Yeast metabolic profiling by FT-ICR-MS"),
+         h3(),
+         actionButton("Example2", "Run Example 2: Yeast metabolic profiling by UPLC-MS")
+         
+         ),
 
     column(4,
         h3('B) Perform decomposition'),
            
-        p('Default alphabets (subunits):', a(href = 'https://raw.githubusercontent.com/daniellyz/Curl/master/amino-acid.txt', 'amino-acid.txt')),
+        p('Default alphabets (subunits):', a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt', 'amino-acid.txt')),
         fileInput('file3', label=h6('File 3: modify the default amino acid file (optional)'),
         accept = c('dat/tab-separated-value','text/tab-separated-values')),
         radioButtons("TE", label="Please select the nature of your mass:", 
