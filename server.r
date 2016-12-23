@@ -49,8 +49,6 @@ shinyServer(function(input, output) {
 
     annotated=NULL
     raw_data=NULL
-    
-    if (selected_ex$a==0){ # If not example data
 
     inFile1=input$file1
     inFile2=input$file2
@@ -105,7 +103,7 @@ shinyServer(function(input, output) {
           output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
           annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2)}
     }
- list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)}
+ list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)
   })
     
   output$summary <- renderPrint({
