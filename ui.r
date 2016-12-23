@@ -32,8 +32,9 @@ shinyUI(fluidPage(
          
          actionButton("Example1", "Run Example 1: Yeast metabolic profiling by FT-ICR-MS"),
          h3(),
-         actionButton("Example2", "Run Example 2: Yeast metabolic profiling by UPLC-MS")
-         
+         actionButton("Example2", "Run Example 2: Yeast metabolic profiling by UPLC-MS"),
+         h3(),
+         actionButton("clearButton", "Clear examples")
          ),
 
     column(4,

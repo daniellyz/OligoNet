@@ -13,27 +13,31 @@ library(DT)
 
 source('script1.r')
 source('script2.r')
-kegg_organism=read.table("kegg_organisms.txt",sep="\t",header=F,stringsAsFactors = F)
-kegg_cpds=read.table("kegg_cpds.txt",sep="\t",header=F,stringsAsFactors = F)
+source('script-ex.r')
+
+kegg_organism=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_organisms.txt",sep="\t",header=F,stringsAsFactors = F)
+kegg_cpds=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_cpds.txt",sep="\t",header=F,stringsAsFactors = F)
 
 #deployApp(server="shinyapps.io",appName="OligoNet-V7")
 
 #### Shiny ####
 shinyServer(function(input, output) {
   
+  selected_ex<-reactiveValues(a=0) # Which ex selected for execution, 0= no example
+  annotated_data<-reactiveValues(k=list()) # If chosen from example, the decomposed data
   
   monomers<-reactive({
   
     inFile3=input$file3
      
     if (is.null(inFile3)){
-      monomers=read.csv('https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt',sep='\t',dec=',',header=F,stringsAsFactors = F)}
+      monomers=read.csv('https://raw.githubusercontent.com/daniellyz/OligoNet/master/amino-acid-basic.txt',sep='\t',dec=',',header=F,stringsAsFactors = F)}
     else{monomers=read.csv(inFile3$datapath,sep='',dec=',',header=F,stringsAsFactors = F)}
     
     condensation=monomers[1,2]
     
     monomers=monomers[2:nrow(monomers),]
-    
+
     monomers[,2]=monomers[,2]-condensation
     
     elements=monomers[,1]
@@ -46,6 +50,8 @@ shinyServer(function(input, output) {
     annotated=NULL
     raw_data=NULL
     
+    if (selected_ex$a==0){ # If not example data
+
     inFile1=input$file1
     inFile2=input$file2
     
@@ -99,26 +105,30 @@ shinyServer(function(input, output) {
           output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
           annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2)}
     }
- list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)
+ list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)}
   })
     
   output$summary <- renderPrint({
-    output=find_annotation()$output_message
+    if(selected_ex$a==0){
+    output=find_annotation()$output_message}
+    else {
+    output=annotated_data$k
+    output=output$output_message}
     cat(paste0(output,collapse="\n"))
     })
   
   output$table1 <- renderDataTable({
-
-    found=find_annotation()$annotated
-    dplace=find_annotation()$dplace
+    
+    if(selected_ex$a==0){found=find_annotation()}
+    else{found=annotated_data$k}
+    
+    found=found$annotated
+    tol2=found$tol2
     
     UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"])
-    
     masslist=as.numeric(found$unique[,2])
-    if (dplace>4){masslist=round(masslist,digits=4)} # only masses annotated to unique combination..
-    if (dplace<4){kegg_cpds[,2]=round(kegg_cpds[,2],dplace)}
     
-    annotated_index=lapply(masslist,function(x) which(kegg_cpds[,2]==x)) # index in kegg that fits measured mass
+    annotated_index=lapply(masslist,function(x) which(abs(x-kegg_cpds[,2]))<=tol2) # index in kegg that fits measured mass
     annotated_cpd=c()
     for (i in 1:length(annotated_index)){
       if (length(annotated_index[[i]])==1){
@@ -137,19 +147,20 @@ shinyServer(function(input, output) {
   })
   
   output$table2 <- renderDataTable({
-    
-    found=find_annotation()$annotated
-    dplace=find_annotation()$dplace
   
+    if(selected_ex$a==0){found=find_annotation()}
+    else{found=annotated_data$k}
+    
+    found=found$annotated
+    tol2=found$tol2
+    
     valid=found$all[,"NBP"]>1
     doubled=found$all[valid,]
     MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"])
     
     masslist=as.numeric(doubled[,2])
-    if (dplace>4){masslist=round(masslist,digits=4)} # only masses annotated to unique combination..
-    if (dplace<4){kegg_cpds[,2]=round(kegg_cpds[,2],dplace)}
     
-    annotated_index=lapply(masslist,function(x) which(kegg_cpds[,2]==x)) # index in kegg that fits measured mass
+    annotated_index=lapply(masslist,function(x) which(abs(x-kegg_cpds[,2]))<=tol2) # index in kegg that fits measured mass   
     annotated_cpd=c()
     for (i in 1:length(annotated_index)){
       if (length(annotated_index[[i]])==1){
@@ -166,19 +177,23 @@ shinyServer(function(input, output) {
     MAAP=datatable(MAAP,escape=c(TRUE, TRUE,TRUE, TRUE, FALSE))
     return(MAAP)})
   
-  load_network <- eventReactive(input$goButtonbis,{  
+  load_network <- eventReactive(input$goButtonbis,{
     
+      if(selected_ex$a==0){found=find_annotation()}
+    
+      else{found=annotated_data$k}
+      
+      found=found$annotated
+      
       cor_min=-1
       
       if ("3" %in% input$visual){cor_min=input$cor_min}
   
-      found=find_annotation()$annotated
-      
       index=which(colnames(found$unique_add)==input$Etiquette)
         
       network=network_generator(found$unique,found$unique_add,cor_min,index,monomers()$elements)
       
-      if ("2" %in% input$visual){
+      if (("2" %in% input$visual) || (selected_ex$a!=0)){ # remove amino acids in the example files
         network=filter_amino_acid(network,monomers()$elements)}
   network})
   
@@ -241,7 +256,6 @@ shinyServer(function(input, output) {
     all_chains
   })
     
-  
   output$networkPlot1 <- renderVisNetwork({
 
     whole_network=load_network()
@@ -253,7 +267,6 @@ shinyServer(function(input, output) {
     chains=generate_degrade_chain(whole_network,path)
     visNetwork(chains$nodes, chains$links)}
  })
-  
   
  output$Controls <- renderUI({
     selectInput('Cores', 'Choose cores:',find_cores()$labels)
@@ -280,7 +293,9 @@ shinyServer(function(input, output) {
    filename = function() {
      "annotation.txt"},
    content = function(file) {
-     found=find_annotation()$annotated
+     if(selected_ex$a==0){found=find_annotation()}
+     else{found=annotated_data$k}
+     found=found$annotated
      masslist=round(as.numeric(found$all[,2]),digits=4) # only masses annotated to unique combination..
      annotated_index=lapply(masslist,function(x) which(kegg_cpds[,2]==x)) # index in kegg that fits measured mass
      annotated_cpd=c()
@@ -299,7 +314,9 @@ shinyServer(function(input, output) {
 )
  
  output$Shows <- renderUI({
-   found=find_annotation()$annotated
+   if(selected_ex$a==0){found=find_annotation()}
+   else{found=annotated_data$k}
+   found=found$annotated
    selectInput('Etiquette', 'Choose what to display when mouse on the nodes:',colnames(found$unique_add))
  })
  
@@ -349,8 +366,11 @@ shinyServer(function(input, output) {
  
 load_KEGG<- eventReactive(input$goButton3,{  
 
-   found=find_annotation()$annotated
-   raw=find_annotation()$raw_data
+   if(selected_ex$a==0){found=find_annotation()}
+   else{found=annotated_data$k}
+    
+   raw=found$raw_data
+   found=found$annotated
    
    row_list_peptide=which(as.numeric(found$all[,"NBP"])>0)
    masslist=round(as.numeric(found$all[row_list_peptide,2]),digits=4) # only masses annotated to unique combination..
@@ -407,13 +427,37 @@ output$image<-renderUI({
   tags$img(src=url)
   })
   
-example1 <- eventReactive(input$Example1,{   
-  
-  
-  
-  
+
+observe({
+  input$Example1
+  isolate({
+   url1="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-FT-Pos.txt"
+   url2="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-FT-Pos_additional.txt"
+   monomers=monomers()
+   tol2=1e-5 # Default tolerance for filtering (Theoritical-Computational error)
+   selected_ex$a=1
+   annotated_data$k=annotate_example(url1,url2,monomers,tol2)
+  })
 })
 
+observe({
+  input$Example2  
+  isolate({
+  url1="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos.txt"
+  url2="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos-additional.txt"
+  monomers=monomers()
+  tol2=1e-3 # Default tolerance for filtering (Theoritical-Computational error)
+  selected_ex$a=2
+  annotated_data$k=annotate_example(url1,url2,monomers,tol2)
+  })
+})
 
+observe({
+  input$clearButton
+  isolate({
+    selected_ex$a=0
+    annotated_data$k=list()
+  })
+})
 
 })

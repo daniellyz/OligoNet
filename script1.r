@@ -57,8 +57,10 @@ peptide_annotation<-function(raw_data,additional_data,results,tol){
     }
   }
       # If multiple possible annotations
+  print(head(additional_data[unique_row,]))
+  print(head(unique_peptide_annotated))
 
- raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
+  raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
  unique_data_annotated=cbind(raw_data[unique_row,],Peptide=unique_peptide_annotated)
  unique_data_additional=cbind(additional_data[unique_row,],Peptide=unique_peptide_annotated)
 
