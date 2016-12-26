@@ -13,7 +13,7 @@ library(DT)
 
 source('script1.r')
 source('script2.r')
-source('script-ex.r')
+source('script3.r')
 
 kegg_organism=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_organisms.txt",sep="\t",header=F,stringsAsFactors = F)
 kegg_cpds=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_cpds.txt",sep="\t",header=F,stringsAsFactors = F)
@@ -39,6 +39,8 @@ shinyServer(function(input, output) {
     monomers=monomers[2:nrow(monomers),]
 
     monomers[,2]=monomers[,2]-condensation
+    
+    monomers=monomers[order(-monomers[,2]),] # Decreasing order
     
     elements=monomers[,1]
     
@@ -82,27 +84,33 @@ shinyServer(function(input, output) {
       
       if (ncol(raw_data)==3){raw_data=cbind(raw_data,III=rep(20,nrow(raw_data)))}
       
-      dplace=decimalnumcount(as.character(raw_data[1,2])) # decimal place
-        
-      mass_list=raw_data[,2]-round(monomers()$condensation,dplace)
+      dplace_raw_data=decimalnumcount(as.character(raw_data[2,2])) # decimal place
+      dplace_monomers=decimalnumcount(as.character(monomers()$tab[2,2]))
+      dplace=min(dplace_raw_data,dplace_monomers) # decimal place taken for rounding
+      
+      mass_list=round(raw_data[,2]-monomers()$condensation,dplace)
       
       tol1=0.01 # Default tolerance for Decomp (Theoritical)
-      
       tol2=1e-5 # Default tolerance for filtering (Theoritical-Computational error)
       
       if (input$TE==2){tol2=input$tol}
       
-      results=send_curl(mass_list,monomers()$tab,tol1,input$DecompID,dplace) # bielefeld results
+      if (input$checkbox){# Use DECOMP server
       
-      if (results$p3=="No response from the server"){ # If no output from the server
-          annotated=NULL
-          output_message=c(output_message,"The decomposition failed, please submit your job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp")}
+        results=send_curl(mass_list,monomers()$tab,tol1,input$DecompID,dplace) # bielefeld results
+      
+        if (results$p3=="No response from the server"){ # If no output from the server
+            annotated=NULL
+            output_message=c(output_message,"The decomposition failed, please submit your job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp")}
         
-      else { # If everything OK
-          output_message=c(output_message, "Decomposition succeeded! please download decomposition results!")
-          output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
-          annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2)}
-    }
+        else { # If everything OK
+            output_message=c(output_message, "Decomposition succeeded! please download decomposition results!")
+            output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
+            annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2)}}
+      
+      else { # Not use DECOMP server 
+        annotated=peptide_annotation_slow(mass_list,dplace,monomers()$tab,raw_data,additional_data,tol2)       
+        output_massage="Decomposition succeeded"}}
  list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)
   })
     
@@ -425,37 +433,4 @@ output$image<-renderUI({
   tags$img(src=url)
   })
   
-
-observe({
-  input$Example1
-  isolate({
-   url1="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-FT-Pos.txt"
-   url2="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-FT-Pos_additional.txt"
-   monomers=monomers()
-   tol2=1e-5 # Default tolerance for filtering (Theoritical-Computational error)
-   selected_ex$a=1
-   annotated_data$k=annotate_example(url1,url2,monomers,tol2)
-  })
-})
-
-observe({
-  input$Example2  
-  isolate({
-  url1="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos.txt"
-  url2="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos-additional.txt"
-  monomers=monomers()
-  tol2=1e-3 # Default tolerance for filtering (Theoritical-Computational error)
-  selected_ex$a=2
-  annotated_data$k=annotate_example(url1,url2,monomers,tol2)
-  })
-})
-
-observe({
-  input$clearButton
-  isolate({
-    selected_ex$a=0
-    annotated_data$k=list()
-  })
-})
-
 })

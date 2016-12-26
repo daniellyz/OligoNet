@@ -1,11 +1,72 @@
 
 options(warn=-1)
 
-####################
-#### Main functions:
-###################
+##############################
+#Scripts for mass decomposition
+##############################
 
-# Script for data annotation:
+# The following function request the job from decomp server
+
+send_curl<-function(mass_list,monomers,tol,DecompID,dplace){
+  
+  # Prepare Json style input & parameters:  
+  
+  if (DecompID=="Job ID"){
+    
+    header="{ \"decomp_input_real_alphabet\":\"# monomer masses, monoisotopic distribution"
+    
+    units=paste0("\\r\\n",monomers[,1]," ",round(monomers[,2],dplace),collapse="")
+    
+    middle="\", \"decomp_input_real_masses\":\""
+    
+    masses=paste0(mass_list[1:(length(mass_list)-1)],"\\r\\n",collapse="")
+    
+    masses=paste0(masses,mass_list[length(mass_list)],collapse="")
+    
+    ender="\", \"paramset\":{ \"decomp_masses_masserrorunit\":\"Da\", \"decomp_masses_massdistribution\":\"mono\", \"decomp_filtering_deviation\":\"true\", \"decomp_filtering_best\":\"20\", \"decomp_filtering_chemicallyplausible\":\"false\", \"decomp_masses_allowedmasserror\":\""
+    
+    ender2=paste0(tol,"\"} }")
+    
+    input_str=paste0(header,units,middle,masses,ender,ender2,collapse="")
+    
+    # 1: Post data
+    
+    #curl -X POST -d @[[INPUT]] http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/request -H "Content-Type: application/json"
+    
+    b1="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/request"
+    p1=postForm(b1,.opts=list(postfields=input_str, httpheader="Content-Type: application/json",useragent = "RCurl"))
+    
+    # 2: Check status
+    b2="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/statuscode"
+    id=p1[1]
+    ptm0 <- proc.time()
+    p2="0"
+    time_passed=0
+    while (p2!="600" & time_passed<500){
+      p2=postForm(b2,.opts=list(postfields=id, httpheader="Content-Type: text/plain",useragent = "RCurl"))
+      ptm1 <- proc.time()-ptm0  
+      time_passed=ptm1[3]
+    }
+    
+    # 3: Output
+    
+    #curl -X POST -d [[ID]] http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/response -H "Content-Type: text/plain";echo
+    if (p2=="600"){ # If the job is finished with success
+      b3="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/response"
+      p3=postForm(b3,.opts=list(postfields=id, httpheader="Content-Type: text/plain",useragent = "RCurl"))
+    }
+    if (p2!="600") {p3="No response from the server"}} # Send error message if Decomp faied to find the results
+  
+  else{
+    b3="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/response"
+    id=DecompID
+    p3=postForm(b3,.opts=list(postfields=DecompID, httpheader="Content-Type: text/plain",useragent = "RCurl"))
+  }
+  return(list(p3=p3,id=id))
+}
+
+
+# Script for data annotation from DECOMP results:
 
 peptide_annotation<-function(raw_data,additional_data,results,tol){
   
@@ -57,203 +118,133 @@ peptide_annotation<-function(raw_data,additional_data,results,tol){
     }
   }
       # If multiple possible annotations
-  print(head(additional_data[unique_row,]))
-  print(head(unique_peptide_annotated))
-
-  raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
+ raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
  unique_data_annotated=cbind(raw_data[unique_row,],Peptide=unique_peptide_annotated)
  unique_data_additional=cbind(additional_data[unique_row,],Peptide=unique_peptide_annotated)
 
  return(list(all=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
-# Script for edge & node calculation
+# Script for data annotation from recursive functinon:
 
-network_generator<-function(unique,unique_add,cor_min,index,elements){
-  
-  I_matrix=unique[,3:(ncol(unique)-1)]
-  class(I_matrix)='numeric'
-  
-  elements=sort(elements)
-  ID_list=as.numeric(unique[,1])
-  from_list=c()
-  to_list=c()
-  diff_list=c()
-  cor_list=c()
-  
-  peptides=unique[,ncol(unique)]
-  peptide_list=lapply(peptides,composition_formula,elements)
 
-  for (p in 1:(length(peptide_list)-1)){
-    for (q in (p+1):length(peptide_list)){
-      dis=peptide_list[[q]]-peptide_list[[p]]
-      coef=cor(I_matrix[p,],I_matrix[q,],method="spearman")
-     if (is.na(coef)){coef=-1}
-      if (all(dis>=0) && coef>=cor_min){
-        from_list=c(from_list,ID_list[q])
-        to_list=c(to_list,ID_list[p])
-        diff_names=elements[which(dis>0)]
-        diff_list=c(diff_list,paste(paste0(diff_names,dis[which(dis>0)]),collapse=''))
-        cor_list=c(cor_list,coef)
-     }
-   }
+peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_data,tol){
+  
+  peptide_annotated=c() # List of all peptide annotations (including no-annotation & duplex annotations)
+  nb_peptide_annotated=c() # List of number of peptide annotations for each mass
+  unique_row=c() # Selected row that represent an unique annotation of peptides
+  
+  monomers[,2]=round(monomers[,2],dplace)
+  
+  if (dplace>4) {appro_dplace=3}
+  if ((dplace>=2) & (dplace<=4)) {appro_dplace=dplace-2}
+  if (dplace<2) {appro_dplace=0}
+
+  masslist_arrondi=round(masslist,appro_dplace)*(10^appro_dplace)
+  monomers_arrondi=round(monomers[,2],appro_dplace)*(10^appro_dplace) # Make every value integer
+
+  for (i in 1:length(masslist_arrondi)){
+    mtry=c(masslist_arrondi[i]-1,masslist_arrondi[i],masslist_arrondi[i]+1) # Test different for rounding effect
+    possible_combinations=c()
+    for (mass in mtry){
+      tmp=capture.output(pay(mass,monomers_arrondi,c()))
+      if (length(tmp)>0){
+        for (k in 1:length(tmp)){
+          kt=strsplit(tmp[k]," ")[[1]]
+          kt=kt[3:length(kt)]
+          possible_combinations=rbind(possible_combinations,as.numeric(kt))}
+      }
+    }
+    if (!is.null(possible_combinations)){ # Decomposition succeeded
+      print(i)
+      possible_combinations=unique(possible_combinations)
+      calculated_masslist=possible_combinations%*%monomers[,2]
+      valid=which(abs(t(calculated_masslist)-masslist[i])<=tol)
+      if (length(valid)>0){
+          possible_combinations=matrix(possible_combinations[valid,],ncol=nrow(monomers))
+          possible_peptides=c()
+          for (r in 1:nrow(possible_combinations)){
+            position=which(possible_combinations[r,]>0)
+            peptide=paste(paste0(monomers[position,1],possible_combinations[r,position]),collapse="")
+            possible_peptides=c(possible_peptides,peptide)}
+          possible_peptides=paste(possible_peptides,collapse=" ; ")
+          peptide_annotated=c(peptide_annotated,possible_peptides)
+          nb_peptide_annotated=c(nb_peptide_annotated,length(valid))
+         if (length(valid)==1) {unique_row=c(unique_row,i)}
+      }
+      else {peptide_annotated=c(peptide_annotated,"No Peptide Found")
+            nb_peptide_annotated=c(nb_peptide_annotated,0)}}
+    else{peptide_annotated=c(peptide_annotated,"No Peptide Found")
+    nb_peptide_annotated=c(nb_peptide_annotated,0)}
   }
-  
-  vectorized=as.vector(rbind(from_list,to_list))
-  g=graph(vectorized)
-  cor_list=as.numeric(cor_list)
-  
-  valid=filter_graph(g,from_list,to_list) # Filter short chains 
-  from_list=from_list[valid]
-  to_list=to_list[valid]
-  diff_list=diff_list[valid]
-  cor_list=cor_list[valid]
-  
-  vectorized=as.vector(rbind(from_list,to_list))
-  g=graph(vectorized) # igraph object
-  
-  links=data.frame(from = from_list, to = to_list)
-  links$arrows <- "to"
-  links$smooth <- FALSE    # should the edges be curved?
-  links$shadow <- FALSE    # edge shadow
-  links$title=diff_list
-  
-  unique_ID=sort(unique(c(from_list,to_list)))
-  ID_list=as.numeric(unique_add[,1])
-  matched_row=match(unique_ID,ID_list)
-  unique_add2=unique_add[matched_row,]
-  
-  nodes <- data.frame(id = as.numeric(unique_add2[,1]))
-  nodes$shape='dot'
-  nodes$shadow <- TRUE 
-  nodes$title <- unique_add2[,index]
-  nodes$label <- unique_add2[,ncol(unique_add2)]
-  nodes$color.background='blue'
-  
-  edges=cbind(from_list,to_list,diff_list)
-  colnames(edges)=c("Source","Target","Loss")
-  
-return(list(links=links,nodes=nodes,from=from_list,to=to_list,diff_list=diff_list,edges=edges,cor=cor_list,g=g))}
 
-# Find common pattern modules
+  raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
+  unique_data_annotated=cbind(raw_data[unique_row,],Peptide=peptide_annotated[unique_row])
+  unique_data_additional=cbind(additional_data[unique_row,],Peptide=peptide_annotated[unique_row])
+  
+  return(list(all=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
-common_pattern_single<-function(network,node_id,mode,orders){
-  
-  g=network$g
-  
-#  L0=0
-#  L1=1
-#  d=1
-#  nodes_list=node_id
-  
-#  while (L1>L0){
-#    L0=length(nodes_list)
-#    connected_nodes=ego(g,d,mode=mode,nodes=node_id,mindist=0)
-#    nodes_list=connected_nodes[[1]]
-#    L1=length(nodes_list)
-#    d=d+1}
-
-  connected_nodes=ego(g,orders,mode=mode,nodes=node_id,mindist=0)
-  nodes_list=connected_nodes[[1]]
-  valid_links=which(apply(rbind(network$from,network$to),2,check_in,nodes_list))
-  
-  new_links=network$links[valid_links,]
-  from_list=network$from[valid_links]
-  to_list=network$to[valid_links]
-  diff_list=network$diff_list[valid_links]
-  cor_list=network$cor[valid_links]
-  
-  vectorized=as.vector(rbind(from_list,to_list))
-  g=graph(vectorized) # igraph object
-  
-  unique_ID=sort(unique(c(from_list,to_list)))
-  ID_list=as.numeric(network$nodes[,1])
-  matched_row=match(unique_ID,ID_list)
-  new_nodes <- network$nodes[matched_row,]
-
-  edges=cbind(from_list,to_list,diff_list)
-  colnames(edges)=c("Source","Target","Loss")
-  
-  # edge shadow
-  
-  return(list(links=new_links,nodes=new_nodes,from=from_list,to=to_list,diff_list=diff_list,edges=edges,cor=cor_list,g=g))
-}
-
-# Find all degradation chains
-
-degrade_chain_all<-function(network,degree_size){
-  
-  g=network$g
-  nodes=network$nodes
-  start_labels=c()
-  paths=list()
-  d=1
-  for (n in 1:(nrow(nodes)-1)){
-    for (m in ((n+1):nrow(nodes))){
-      checked_nodes=all_simple_paths(g,from=nodes[m,1],to=nodes[n,1])
-      if (length(checked_nodes)>=1){
-        chain_lengths=lapply(checked_nodes,length) # Length of all found connections between nodes
-        wm=which(chain_lengths>degree_size)
-        if (length(wm)>0){
-          for (i in 1:length(wm)){ 
-            chain_nodes=checked_nodes[[wm[i]]] # One of the long chains
-            chain_nodes=sort(chain_nodes,decreasing=T)
-            paths[[d]]=chain_nodes
-            valid=match(chain_nodes[1],nodes$id)
-            start_labels=c(start_labels,paste0(nodes$label[valid],"-Chain-",d,"-Length-",length(chain_nodes)-1))
-            d=d+1}
-      }}
+# Recursive function:
+pay<-function(Amount,billList,billCount){
+  billList=sort(billList,decreasing=T)       
+  maxN=floor(Amount/billList[1])
+  if (length(billList)==1){
+    reminder=Amount%%billList
+    if (reminder==0){
+      count=c(billCount,maxN)
+      print(count)
     }
   }
- valid=which(!duplicated(paths)) # no duplicated paths
- start_labels=start_labels[valid] 
- paths_new=list()
- for (i in 1:length(valid)){paths_new[[i]]=paths[[valid[i]]]}
- return(list(paths=paths_new,start_labels=start_labels)) 
+  if (length(billList)>1){
+    for (i in seq(maxN,0,by=-1)){
+      reminder=Amount-i*billList[1]
+      pay(reminder,billList[2:length(billList)],c(billCount,i))}
+  }
 }
 
-generate_degrade_chain<-function(network,path){
+
+
+
+
+
+
+
+
+
+
+
+annotate_example<-function(url1,url2,monomers,tol2){
   
-  valid_links=which(apply(rbind(network$from,network$to),2,check_in,path))
-  new_links=network$links[valid_links,]
-  from_list=network$from[valid_links]
-  to_list=network$to[valid_links]
-  cor_list=network$cor[valid_links]
-  diff_list=network$diff_list[valid_links]
+  raw_data=data.matrix(read.table(url1,sep='\t',dec=',',header=T,stringsAsFactors = F))
   
-  vectorized=as.vector(rbind(from_list,to_list))
-  g=graph(vectorized) # igraph object
+  additional_data=data.matrix(read.table(url2,sep='\t',dec=',',header=T,stringsAsFactors = F))
   
-  unique_ID=sort(unique(c(from_list,to_list)))
-  ID_list=as.numeric(network$nodes[,1])
-  matched_row=match(unique_ID,ID_list)
-  new_nodes <- network$nodes[matched_row,]
+  dplace=decimalnumcount(as.character(raw_data[1,2])) # decimal place
   
-  edges=cbind(from_list,to_list,diff_list)
-  colnames(edges)=c("Source","Target","Loss")
+  mass_list=raw_data[,2]-round(monomers$condensation,dplace)
   
-  # edge shadow
+  tol1=0.01 # Default tolerance for Decomp (Theoritical)
   
-  return(list(links=new_links,nodes=new_nodes,from=from_list,to=to_list,diff_list=diff_list,edges=edges,cor=cor_list,g=g))
+  results=send_curl(mass_list,monomers$tab,tol1,"Job ID",dplace) # bielefeld results
+  
+  output_message="Decomposition succeeded! please download decomposition results!"
+  output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
+  annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2)
+  
+  return(list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2))
 }
 
-# Remove amino acids from network
-filter_amino_acid<-function(network,elements){ 
-  annotation_list=network$nodes$label
-  wp=which(sapply(annotation_list,check_free,elements))
-  new_nodes <- network$nodes[wp,]
-  valid_links=which(apply(rbind(network$from,network$to),2,check_in,new_nodes$id))
-  
-  new_links=network$links[valid_links,]
-  from_list=network$from[valid_links]
-  to_list=network$to[valid_links]
-  cor_list=network$cor[valid_links]
-  diff_list=network$diff_list[valid_links]
-  
-  vectorized=as.vector(rbind(from_list,to_list))
-  g=graph(vectorized) # igraph object
-  
-  edges=cbind(from_list,to_list,diff_list)
-  colnames(edges)=c("Source","Target","Loss")
-  
-return(list(links=new_links,nodes=new_nodes,from=from_list,to=to_list,diff_list=diff_list,edges=edges,cor=cor_list,g=g))}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

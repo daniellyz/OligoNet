@@ -37,15 +37,16 @@ shinyUI(fluidPage(
          actionButton("clearButton", "Clear examples")
          ),
 
-    column(4,
+    column(4, offset = 0,
         h3('B) Perform decomposition'),
            
-        p('Default alphabets (subunits):', a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt', 'amino-acid.txt')),
-        fileInput('file3', label=h6('File 3: modify the default amino acid file (optional)'),
+        checkboxInput("checkbox", label = "Use DECOMP server (Faster)", value = FALSE),
+       # p('Default alphabets (subunits):', a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt', 'amino-acid.txt')),
+        fileInput('file3', label=a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt','File 3: Modify the default amino acid file (optional)'),
         accept = c('dat/tab-separated-value','text/tab-separated-values')),
         radioButtons("TE", label="Please select the nature of your mass:", 
         choices = list("Theoritical mass" = 1, "Experimental mass with error (Da):" = 2),selected = 1),
-        numericInput('tol', h6(''), 0.01,min=1e-5,max=0.5),
+        numericInput('tol', '', 0.01,min=1e-5,max=0.5),
         textInput("DecompID", label = "Enter Bibiserv2-Decomp job ID (Optional):",value="Job ID"),
         actionButton("goButton", "Go!"),
         downloadButton("downloadAnnotation", "Download decomposition results")),   
