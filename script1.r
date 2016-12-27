@@ -118,11 +118,12 @@ peptide_annotation<-function(raw_data,additional_data,results,tol){
     }
   }
       # If multiple possible annotations
+ raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
  raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
  unique_data_annotated=cbind(raw_data[unique_row,],Peptide=unique_peptide_annotated)
  unique_data_additional=cbind(additional_data[unique_row,],Peptide=unique_peptide_annotated)
 
- return(list(all=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
+ return(list(all=raw_data,all_add=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
 # Script for data annotation from recursive functinon:
 
@@ -135,9 +136,9 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
   
   monomers[,2]=round(monomers[,2],dplace)
   
-  if (dplace>4) {appro_dplace=3}
-  if ((dplace>=2) & (dplace<=4)) {appro_dplace=dplace-2}
-  if (dplace<2) {appro_dplace=0}
+  if (tol<1e-4) {appro_dplace=3}
+  if ((tol>=1e-4) & (tol<=1e-1)) {appro_dplace=-round(log10(tol))}
+  if (tol>1e-1) {appro_dplace=0}
 
   masslist_arrondi=round(masslist,appro_dplace)*(10^appro_dplace)
   monomers_arrondi=round(monomers[,2],appro_dplace)*(10^appro_dplace) # Make every value integer
@@ -155,11 +156,11 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
       }
     }
     if (!is.null(possible_combinations)){ # Decomposition succeeded
-      print(i)
       possible_combinations=unique(possible_combinations)
       calculated_masslist=possible_combinations%*%monomers[,2]
       valid=which(abs(t(calculated_masslist)-masslist[i])<=tol)
       if (length(valid)>0){
+          print(i)
           possible_combinations=matrix(possible_combinations[valid,],ncol=nrow(monomers))
           possible_peptides=c()
           for (r in 1:nrow(possible_combinations)){
@@ -176,12 +177,13 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
     else{peptide_annotated=c(peptide_annotated,"No Peptide Found")
     nb_peptide_annotated=c(nb_peptide_annotated,0)}
   }
-
+  
+  raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
   raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
   unique_data_annotated=cbind(raw_data[unique_row,],Peptide=peptide_annotated[unique_row])
   unique_data_additional=cbind(additional_data[unique_row,],Peptide=peptide_annotated[unique_row])
   
-  return(list(all=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
+  return(list(all=raw_data,all_add=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
 # Recursive function:
 pay<-function(Amount,billList,billCount){
@@ -200,17 +202,6 @@ pay<-function(Amount,billList,billCount){
       pay(reminder,billList[2:length(billList)],c(billCount,i))}
   }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 annotate_example<-function(url1,url2,monomers,tol2){
   

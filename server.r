@@ -25,6 +25,7 @@ shinyServer(function(input, output) {
   
   selected_ex<-reactiveValues(a=0) # Which ex selected for execution, 0= no example
   annotated_data<-reactiveValues(k=list()) # If chosen from example, the decomposed data
+  annotated_network<-reactiveValues(n=list()) # If chosen from example, the network
   
   monomers<-reactive({
   
@@ -110,13 +111,14 @@ shinyServer(function(input, output) {
       
       else { # Not use DECOMP server 
         annotated=peptide_annotation_slow(mass_list,dplace,monomers()$tab,raw_data,additional_data,tol2)       
-        output_massage="Decomposition succeeded"}}
+        output_massage="Decomposition succeeded! please download decomposition results!"}}
  list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)
   })
     
   output$summary <- renderPrint({
     if(selected_ex$a==0){
-    output=find_annotation()$output_message}
+    output=find_annotation()$output_message
+    }
     else {
     output=annotated_data$k
     output=output$output_message}
@@ -125,10 +127,12 @@ shinyServer(function(input, output) {
   
   output$table1 <- renderDataTable({
     
-    found=find_annotation()
-    
+    if(selected_ex$a==0){found=find_annotation()}
+    else{found=annotated_data$k}
+
+    #save(found,file="LC_annotation.Rdata")
+    tol2=found$tol2
     found=found$annotated
-    tol2=find_annotation()$tol2
     
     UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"])
     masslist=round(as.numeric(found$unique[,2]),4)
@@ -151,6 +155,7 @@ shinyServer(function(input, output) {
     UAAC <- cbind(UAAC,createLink(annotated_cpd))
     colnames(UAAC)[4]="KEGG"
     UAAC=datatable(UAAC,escape=c(TRUE, TRUE,TRUE, FALSE))
+
     return(UAAC)
   })
   
@@ -159,8 +164,8 @@ shinyServer(function(input, output) {
     if(selected_ex$a==0){found=find_annotation()}
     else{found=annotated_data$k}
     
+    tol2=found$tol2
     found=found$annotated
-    tol2=find_annotation()$tol2
     
     valid=found$all[,"NBP"]>1
     doubled=found$all[valid,]
@@ -191,10 +196,8 @@ shinyServer(function(input, output) {
   
   load_network <- eventReactive(input$goButtonbis,{
     
-      if(selected_ex$a==0){found=find_annotation()}
+      found=find_annotation()
     
-      else{found=annotated_data$k}
-      
       found=found$annotated
       
       cor_min=-1
@@ -211,20 +214,28 @@ shinyServer(function(input, output) {
   
   
   output$Distribution_degree<-renderPlot({
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
+    
+    #save(whole_network,file="LC_network.Rdata")
+    
     deg_in <- degree(whole_network$g, mode="all")
     deg_in=deg_in[which(deg_in>=1)]
-    plot(rank(-deg_in),as.numeric(deg_in),xlab="Rank",ylab="Degree")  
+    plot(rank(-deg_in),as.numeric(deg_in),xlab="Rank",ylab="Degree")
 })
   
   output$Distribution_edge<-renderPlot({
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
+    
     count_diff=table(whole_network$diff_list)
     plot(rank(-count_diff),as.numeric(count_diff),xlab="Rank",ylab="Occurences")
 })  
   
   output$Top_edge<-renderPlot({
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
+    
     count_diff=table(whole_network$diff_list)
     count_diff=sort(count_diff,decreasing = T)
     most_rank=ceiling(length(count_diff)*0.2)
@@ -232,19 +243,21 @@ shinyServer(function(input, output) {
   })  
   
   output$Distribution_correlation<-renderPlot({
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
     hist(whole_network$cor,xlab="Spearman correlation coefficient",ylab="Frequency",main="")
 })  
   
   output$Distribution_length<-renderPlot({
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
     g=whole_network$g
     nodes=whole_network$nodes
     dl=c()
     for (n in 1:(nrow(nodes)-1)){
       for (m in ((n+1):nrow(nodes))){
-        checked_nodes=all_simple_paths(g,from=nodes[m,1],to=nodes[n,1])
-        if (length(checked_nodes)>0){
+        checked_nodes=try(all_simple_paths(g,from=nodes[m,1],to=nodes[n,1]),silent=T)
+        if ((length(checked_nodes)>0) & (class(checked_nodes)!="try-error")){
           dl=c(dl,sapply(checked_nodes,length))}
       }
     }
@@ -253,7 +266,8 @@ shinyServer(function(input, output) {
   
   find_cores<-reactive({
     
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
     deg_in <- degree(whole_network$g, mode="all")
     #print(deg_in)
     w_in=which(deg_in>4)
@@ -263,14 +277,16 @@ shinyServer(function(input, output) {
   })
   
   find_chains<-reactive({
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
     all_chains=degrade_chain_all(whole_network,3)
     all_chains
   })
     
   output$networkPlot1 <- renderVisNetwork({
 
-    whole_network=load_network()
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
     if (!is.null(whole_network)){
     chains_list=find_chains()
     paths_list=chains_list$paths
@@ -292,7 +308,8 @@ shinyServer(function(input, output) {
 
  output$networkPlot3 <- renderVisNetwork({
 
-   whole_network=load_network()
+   if(selected_ex$a==0){whole_network=load_network()}
+   else{whole_network=annotated_network$n}
    if (!is.null(whole_network)){
     wp=which(find_cores()$labels==input$Cores)
     node_id=find_cores()$w_in[wp]
@@ -307,9 +324,13 @@ shinyServer(function(input, output) {
    content = function(file) {
      if(selected_ex$a==0){found=find_annotation()}
      else{found=annotated_data$k}
+     tol2=found$tol2
      found=found$annotated
      masslist=round(as.numeric(found$all[,2]),digits=4) # only masses annotated to unique combination..
-     annotated_index=lapply(masslist,function(x) which(kegg_cpds[,2]==x)) # index in kegg that fits measured mass
+     annotated_index=list()
+     for (m in 1:length(masslist)){
+       valid=which(abs(kegg_cpds[,2]-masslist[m])<=tol2)
+       annotated_index[[m]]=valid}
      annotated_cpd=c()
      for (i in 1:length(annotated_index)){
        if (length(annotated_index[[i]])==1){
@@ -321,7 +342,7 @@ shinyServer(function(input, output) {
          cpd_code=paste0(cpd_code,collapse = " , ")}
        else{cpd_code="Non metabolites found"}
        annotated_cpd=c(annotated_cpd,cpd_code)}
-  all_annotated= cbind(found$all,KEGG=annotated_cpd)     
+  all_annotated= cbind(found$all_add,KEGG=annotated_cpd)     
   write.table(all_annotated, file,sep="\t",dec=",",row.names=F,col.names=T)}
 )
  
@@ -337,7 +358,8 @@ shinyServer(function(input, output) {
    filename = function() {
      "edges.txt"},
    content = function(file) {
-     whole_network=load_network()
+     if(selected_ex$a==0){whole_network=load_network()}
+     else{whole_network=annotated_network$n}
      write.table(whole_network$edges, file,sep="\t",dec=",",row.names=F,col.names=T)}
  )
  
@@ -346,7 +368,8 @@ shinyServer(function(input, output) {
    filename = function() {
      "high-degree.txt"},
    content = function(file) {
-     whole_network=load_network()
+     if(selected_ex$a==0){whole_network=load_network()}
+     else{whole_network=annotated_network$n}
      if (!is.null(whole_network)){
        wp=which(find_cores()$labels==input$Cores)
        node_id=find_cores()$w_in[wp]
@@ -359,7 +382,8 @@ shinyServer(function(input, output) {
    filename = function() {
      "chain.txt"},
    content = function(file) {
-     whole_network=load_network()
+     if(selected_ex$a==0){whole_network=load_network()}
+     else{whole_network=annotated_network$n}
      if (!is.null(whole_network)){
        chains_list=find_chains()
        paths_list=chains_list$paths
@@ -371,7 +395,8 @@ shinyServer(function(input, output) {
 
  output$networkPlot <- renderVisNetwork({
    choose_to_show="1" %in% input$visual
-   whole_network=load_network()
+   if(selected_ex$a==0){whole_network=load_network()}
+   else{whole_network=annotated_network$n}
     if (!is.null(whole_network) && choose_to_show){
       visNetwork(whole_network$nodes, whole_network$links)}
   })
@@ -380,14 +405,20 @@ load_KEGG<- eventReactive(input$goButton3,{
 
    if(selected_ex$a==0){found=find_annotation()}
    else{found=annotated_data$k}
-    
+
+   tol2=found$tol2
    raw=found$raw_data
    found=found$annotated
    
    row_list_peptide=which(as.numeric(found$all[,"NBP"])>0)
    masslist=round(as.numeric(found$all[row_list_peptide,2]),digits=4) # only masses annotated to unique combination..
 
-   index_cpd=match(masslist,kegg_cpds[,2])
+   annotated_index=list()
+   for (m in 1:length(masslist)){
+     valid=which(abs(kegg_cpds[,2]-masslist[m])<=tol2)
+     annotated_index[[m]]=valid}
+   
+   index_cpd=unlist(annotated_index)
    index_cpd=index_cpd[which(!is.na(index_cpd))]   
    code_cpd=kegg_cpds[index_cpd,1]
    
@@ -420,6 +451,9 @@ output$image<-renderUI({
   i=which(load_KEGG()$pathway_names==input$pathway)
   code_path=load_KEGG()$code_path
   url=NULL
+  if(selected_ex$a==0){found=find_annotation()}
+  else{found=annotated_data$k}
+  tol2=found$tol2
   
   ll=try(keggGet(code_path[i]),silent=T)
     if (class(ll)!="try-error"){
@@ -427,8 +461,16 @@ output$image<-renderUI({
       if ((class(cpds)!="NULL") && (class(cpds)!="try-error")) {
         cpds_mass_list=sapply(cpds,function(x) as.numeric(keggGet(x)[[1]]$EXACT_MASS))
         cpds_mass_list=round(unlist(cpds_mass_list),4) # Round to 4 values after decimal
-        mc=match(cpds_mass_list,load_KEGG()$mnp)
-        mp=match(cpds_mass_list,load_KEGG()$mp)
+        mass_np=load_KEGG()$mnp
+        mass_p=load_KEGG()$mp
+        mc=c()
+        for (m in 1:length(mass_np)){
+          valid=which(abs(cpds_mass_list-mass_np[m])<=tol2)
+          mc=c(mc,valid)}
+        mp=c()
+        for (m in 1:length(mass_p)){
+          valid=which(abs(cpds_mass_list-mass_p[m])<=tol2)
+          mp=c(mp,valid)}
         nodes1=names(cpds_mass_list)[which(!is.na(mp))]  # Peptides
         nodes2=names(cpds_mass_list)[which(!is.na(mc))] # No peptides but matched
         col1=rep('red',length(nodes1))
@@ -439,4 +481,33 @@ output$image<-renderUI({
   tags$img(src=url)
   })
   
+
+observeEvent(input$Example1,{ 
+    selected_ex$a=1
+    load("FT_annotation.RData")
+    load("FT_network.RData")
+    annotated_data$k=found
+    annotated_network$n=network
 })
+
+observeEvent(input$Example2,{ 
+  selected_ex$a=2
+  load("LC_annotation.RData")
+  load("LC_network.RData")
+  annotated_data$k=found
+  annotated_network$n=network
+})
+
+observeEvent(input$clearButton,{ 
+    selected_ex$a=0
+    annotated_data$k=list()
+    annotated_network$n=list()
+})
+
+})
+
+
+
+
+
+
