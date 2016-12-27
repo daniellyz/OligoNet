@@ -91,8 +91,8 @@ shinyServer(function(input, output) {
       mass_list=round(raw_data[,2]-monomers()$condensation,dplace)
       
       tol1=0.01 # Default tolerance for Decomp (Theoritical)
-      tol2=1e-5 # Default tolerance for filtering (Theoritical-Computational error)
-      
+      tol2=0.00001 # Default tolerance for filtering (Theoritical-Computational error)
+
       if (input$TE==2){tol2=input$tol}
       
       if (input$checkbox){# Use DECOMP server
@@ -125,16 +125,18 @@ shinyServer(function(input, output) {
   
   output$table1 <- renderDataTable({
     
-    if(selected_ex$a==0){found=find_annotation()}
-    else{found=annotated_data$k}
+    found=find_annotation()
     
     found=found$annotated
-    tol2=found$tol2
+    tol2=find_annotation()$tol2
     
     UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"])
-    masslist=as.numeric(found$unique[,2])
-    
-    annotated_index=lapply(masslist,function(x) which(abs(x-kegg_cpds[,2]))<=tol2) # index in kegg that fits measured mass
+    masslist=round(as.numeric(found$unique[,2]),4)
+
+    annotated_index=list()
+    for (m in 1:length(masslist)){
+      valid=which(abs(kegg_cpds[,2]-masslist[m])<=tol2)
+      annotated_index[[m]]=valid}
     annotated_cpd=c()
     for (i in 1:length(annotated_index)){
       if (length(annotated_index[[i]])==1){
@@ -158,15 +160,19 @@ shinyServer(function(input, output) {
     else{found=annotated_data$k}
     
     found=found$annotated
-    tol2=found$tol2
+    tol2=find_annotation()$tol2
     
     valid=found$all[,"NBP"]>1
     doubled=found$all[valid,]
     MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"])
     
-    masslist=as.numeric(doubled[,2])
+    masslist=round(as.numeric(doubled[,2]),4)
+
+    annotated_index=list()
+    for (m in 1:length(masslist)){
+      valid=which(abs(kegg_cpds[,2]-masslist[m])<=tol2)
+      annotated_index[[m]]=valid}
     
-    annotated_index=lapply(masslist,function(x) which(abs(x-kegg_cpds[,2]))<=tol2) # index in kegg that fits measured mass   
     annotated_cpd=c()
     for (i in 1:length(annotated_index)){
       if (length(annotated_index[[i]])==1){
