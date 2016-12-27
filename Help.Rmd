@@ -6,9 +6,9 @@ OligoNet is primary developed for processing mass spectrometry data that are alr
 
 ### Step A: Upload metabolomics data
 * File 1 is the mass spectrum data in .txt or .dat format. The data file must organized as it is shown in table 1 with first row as headers. The columns must be separated by tabulations. The decimal mark must be a comma.
-<div style="width:200px; height=100px">
+
 ![Table 1.](https://raw.githubusercontent.com/daniellyz/OligoNet/master/Tab1.JPG)
-</div>
+
 ^1 The second column must be a list of neutral masses.We suggest that all mass values have the same number of digits after the decimal. 
 ^2 In further stage of the software, we will calculate the correlation coefficient between metabolic features. It is suggested to have at least P>10 samples for a reliable correlation calculation.
 * File 2 (.txt, columns separated by tabulation) contains all additional information of each mass, such as retention time, statistical scores ... These informations could be later displayed on the network. The first column of the file must be IDs of masses. This column must be identical (same ids, in the same order) as in File 1. 
