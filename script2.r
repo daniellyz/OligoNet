@@ -8,7 +8,7 @@ options(warn=-1)
 
 network_generator<-function(unique,unique_add,cor_min,index,elements){
   
-  I_matrix=unique[,3:(ncol(unique)-1)]
+  I_matrix=unique[,3:(ncol(unique)-2)]
   class(I_matrix)='numeric'
   
   elements=sort(elements)

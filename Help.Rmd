@@ -33,11 +33,13 @@ A peptide degradation network is constructed using UAAC mass signals (mass value
 
 ### Display of decomposition results
 
-
+The tabpanel UAAC-annotation displays mass values that were annotated as a Unique Amino Acid Combination. The tabpanel MAAP-annotationc displays mass values that were annotated as MultiPle Amino Acid combinations. 
 
 ### Network visualization and analysis
 
+Apart from the visualization of the entire PDN, OligoNet propose several graph analysis of the PDN. It could also extract some interesting subgraphs from the network. Users could enter the tabpanels "PDN analysis" and "Subgraphs" for further explanation. 
 
+### Peptides in metabolic pathways
 
 
 

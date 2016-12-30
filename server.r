@@ -88,7 +88,7 @@ shinyServer(function(input, output) {
       dplace_raw_data=decimalnumcount(as.character(raw_data[2,2])) # decimal place
       dplace_monomers=decimalnumcount(as.character(monomers()$tab[2,2]))
       dplace=min(dplace_raw_data,dplace_monomers) # decimal place taken for rounding
-      
+
       mass_list=round(raw_data[,2]-monomers()$condensation,dplace)
       
       tol1=0.01 # Default tolerance for Decomp (Theoritical)
@@ -129,8 +129,8 @@ shinyServer(function(input, output) {
     
     if(selected_ex$a==0){found=find_annotation()}
     else{found=annotated_data$k}
-
-    #save(found,file="LC_annotation.Rdata")
+    
+    save(found,file="LC-annotation.Rdata")
     tol2=found$tol2
     found=found$annotated
     
@@ -196,7 +196,8 @@ shinyServer(function(input, output) {
   
   load_network <- eventReactive(input$goButtonbis,{
     
-      found=find_annotation()
+      if(selected_ex$a==0){found=find_annotation()}
+      else{found=annotated_data$k}
     
       found=found$annotated
       
@@ -205,19 +206,27 @@ shinyServer(function(input, output) {
       if ("3" %in% input$visual){cor_min=input$cor_min}
   
       index=which(colnames(found$unique_add)==input$Etiquette)
-        
+      
       network=network_generator(found$unique,found$unique_add,cor_min,index,monomers()$elements)
       
       if (("2" %in% input$visual) || (selected_ex$a!=0)){ # remove amino acids in the example files
         network=filter_amino_acid(network,monomers()$elements)}
   network})
   
+  output$networkPlot <- renderVisNetwork({
+
+    choose_to_show="1" %in% input$visual
+    if(selected_ex$a==0){whole_network=load_network()}
+    else{whole_network=annotated_network$n}
+    
+    save(whole_network,file="LC-network.Rdata")
+    if (!is.null(whole_network) && choose_to_show){
+      visNetwork(whole_network$nodes, whole_network$links)}
+  })
   
   output$Distribution_degree<-renderPlot({
     if(selected_ex$a==0){whole_network=load_network()}
     else{whole_network=annotated_network$n}
-    
-    #save(whole_network,file="LC_network.Rdata")
     
     deg_in <- degree(whole_network$g, mode="all")
     deg_in=deg_in[which(deg_in>=1)]
@@ -268,7 +277,7 @@ shinyServer(function(input, output) {
     
     if(selected_ex$a==0){whole_network=load_network()}
     else{whole_network=annotated_network$n}
-    deg_in <- degree(whole_network$g, mode="all")
+    deg_in <- degree(whole_network$g, mode="in")
     #print(deg_in)
     w_in=which(deg_in>4)
     rw=match(w_in,whole_network$nodes$id)
@@ -313,7 +322,7 @@ shinyServer(function(input, output) {
    if (!is.null(whole_network)){
     wp=which(find_cores()$labels==input$Cores)
     node_id=find_cores()$w_in[wp]
-    cps=common_pattern_single(whole_network,node_id,'all',input$Order)
+    cps=common_pattern_single(whole_network,node_id,'in',input$Order)
     visNetwork(cps$nodes, cps$links)}
  })
  
@@ -393,14 +402,7 @@ shinyServer(function(input, output) {
        write.table(chains$edges,file,sep="\t",dec=",",row.names=F,col.names=T)}}
  )
 
- output$networkPlot <- renderVisNetwork({
-   choose_to_show="1" %in% input$visual
-   if(selected_ex$a==0){whole_network=load_network()}
-   else{whole_network=annotated_network$n}
-    if (!is.null(whole_network) && choose_to_show){
-      visNetwork(whole_network$nodes, whole_network$links)}
-  })
- 
+
 load_KEGG<- eventReactive(input$goButton3,{  
 
    if(selected_ex$a==0){found=find_annotation()}
@@ -487,15 +489,15 @@ observeEvent(input$Example1,{
     load("FT_annotation.RData")
     load("FT_network.RData")
     annotated_data$k=found
-    annotated_network$n=network
+    annotated_network$n=whole_network
 })
 
 observeEvent(input$Example2,{ 
   selected_ex$a=2
-  load("LC_annotation.RData")
-  load("LC_network.RData")
+  load("LC-annotation.RData")
+  load("LC-network.RData")
   annotated_data$k=found
-  annotated_network$n=network
+  annotated_network$n=whole_network
 })
 
 observeEvent(input$clearButton,{ 
