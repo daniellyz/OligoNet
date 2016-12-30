@@ -91,6 +91,8 @@ common_pattern_single<-function(network,node_id,mode,orders){
   #    d=d+1}
   
   connected_nodes=ego(g,orders,mode=mode,nodes=node_id,mindist=0)
+  if (length(connected_nodes)==0){}
+  else{
   nodes_list=connected_nodes[[1]]
   valid_links=which(apply(rbind(network$from,network$to),2,check_in,nodes_list))
   
@@ -113,7 +115,7 @@ common_pattern_single<-function(network,node_id,mode,orders){
   
   # edge shadow
   
-  return(list(links=new_links,nodes=new_nodes,from=from_list,to=to_list,diff_list=diff_list,edges=edges,cor=cor_list,g=g))
+  return(list(links=new_links,nodes=new_nodes,from=from_list,to=to_list,diff_list=diff_list,edges=edges,cor=cor_list,g=g))}
 }
 
 # Find all degradation chains

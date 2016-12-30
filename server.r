@@ -130,7 +130,7 @@ shinyServer(function(input, output) {
     if(selected_ex$a==0){found=find_annotation()}
     else{found=annotated_data$k}
     
-    save(found,file="LC-annotation.Rdata")
+   # save(found,file="FT-annotation.Rdata")
     tol2=found$tol2
     found=found$annotated
     
@@ -219,7 +219,7 @@ shinyServer(function(input, output) {
     if(selected_ex$a==0){whole_network=load_network()}
     else{whole_network=annotated_network$n}
     
-    save(whole_network,file="LC-network.Rdata")
+   #save(whole_network,file="FT-network.Rdata")
     if (!is.null(whole_network) && choose_to_show){
       visNetwork(whole_network$nodes, whole_network$links)}
   })
@@ -297,12 +297,13 @@ shinyServer(function(input, output) {
     if(selected_ex$a==0){whole_network=load_network()}
     else{whole_network=annotated_network$n}
     if (!is.null(whole_network)){
-    chains_list=find_chains()
-    paths_list=chains_list$paths
-    wp=which(chains_list$start_labels==input$Start)
-    path=paths_list[[wp]]
-    chains=generate_degrade_chain(whole_network,path)
-    visNetwork(chains$nodes, chains$links)}
+      chains_list=find_chains()
+      paths_list=chains_list$paths
+      wp=which(chains_list$start_labels==input$Start)
+      if (length(wp)>0){
+        path=paths_list[[wp]]
+        chains=generate_degrade_chain(whole_network,path)
+        visNetwork(chains$nodes, chains$links)}}
  })
   
  output$Controls <- renderUI({
@@ -321,9 +322,10 @@ shinyServer(function(input, output) {
    else{whole_network=annotated_network$n}
    if (!is.null(whole_network)){
     wp=which(find_cores()$labels==input$Cores)
-    node_id=find_cores()$w_in[wp]
-    cps=common_pattern_single(whole_network,node_id,'in',input$Order)
-    visNetwork(cps$nodes, cps$links)}
+    if (length(wp)>0){
+      node_id=find_cores()$w_in[wp]
+      cps=common_pattern_single(whole_network,node_id,'in',input$Order)
+      visNetwork(cps$nodes, cps$links)}}
  })
  
  output$downloadAnnotation<-downloadHandler(
@@ -486,8 +488,8 @@ output$image<-renderUI({
 
 observeEvent(input$Example1,{ 
     selected_ex$a=1
-    load("FT_annotation.RData")
-    load("FT_network.RData")
+    load("FT-annotation.RData")
+    load("FT-network.RData")
     annotated_data$k=found
     annotated_network$n=whole_network
 })
