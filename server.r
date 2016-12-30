@@ -6,7 +6,7 @@ library(KEGGREST)
 require(visNetwork, quietly = TRUE)
 require(stringr,  quietly = TRUE)
 require(RCurl, quietly = TRUE)
-library(DT) 
+require(DT, quietly = TRUE) 
 #bibiserv2_2016-11-28_145427_MrRdE
 #bibiserv2_2016-12-03_191118_7X2uK  # Without sugar/glutamine/asparagine
 #bibiserv2_2016-12-05_161538_XtQxM # LC data 

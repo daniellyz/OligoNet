@@ -2,6 +2,7 @@ library(shiny)
 library(KEGGREST)
 require(visNetwork, quietly = TRUE)
 library(markdown)
+library(DT)
 
 textInputRow<-function (inputId, label, value = "") 
 {
