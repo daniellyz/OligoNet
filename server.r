@@ -456,16 +456,16 @@ output$image<-renderUI({
 
 observeEvent(input$Example1,{ 
     selected_ex$a=1
-    load("FT-annotation.RData")
-    load("FT-network.RData")
+    load("FT-annotation.Rdata")
+    load("FT-network.Rdata")
     annotated_data$k=found
     annotated_network$n=whole_network
 })
 
 observeEvent(input$Example2,{ 
   selected_ex$a=2
-  load("LC-annotation.RData")
-  load("LC-network.RData")
+  load("LC-annotation.Rdata")
+  load("LC-network.Rdata")
   annotated_data$k=found
   annotated_network$n=whole_network
 })
