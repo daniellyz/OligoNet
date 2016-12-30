@@ -17,6 +17,7 @@ source('script3.r')
 
 kegg_organism=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_organisms.txt",sep="\t",header=F,stringsAsFactors = F)
 kegg_cpds=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_cpds.txt",sep="\t",header=F,stringsAsFactors = F)
+kegg_paths=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_pathway.txt",sep="\t",header=F,stringsAsFactors = F)
 
 #deployApp(server="shinyapps.io",appName="OligoNet-V7")
 
@@ -53,9 +54,6 @@ shinyServer(function(input, output) {
     annotated=NULL
     raw_data=NULL
 
-    inFile1=input$file1
-    inFile2=input$file2
-    
     output_message=c()# Output messages for users
     
     if (!is.null(inFile1) && is.null(inFile2)) {inFile2=inFile1}
@@ -405,44 +403,51 @@ shinyServer(function(input, output) {
  )
 
 output$Kegg_pathway <- renderUI({
-  
-  pathway_names=keggList("pathway")
-  pathway_names
-  
-  selectInput('pathway', 'Choose your pathway:',load_KEGG()$pathway_names)
-  #  code_path=paste0("sce",code_path)
+  selectInput('pathway', 'Choose your pathway:',kegg_paths[,2])
 })
 
 output$image<-renderUI({
   
-  i=which(load_KEGG()$pathway_names==input$pathway)
-  code_path=load_KEGG()$code_path
+  ind=which(kegg_paths[,2]==input$pathway)
+  code_path=kegg_paths[ind,1]
+  code_path=str_extract(code_path,"[[:digit:]]+")
+  wo=which(kegg_organism[,2]==input$Organism)
+  organism=kegg_organism[wo,1] # Abbreviation of organism chosen
+  code_path=paste0(organism,code_path)
+  
   url=NULL
   if(selected_ex$a==0){found=find_annotation()}
   else{found=annotated_data$k}
   tol2=found$tol2
-  
-  ll=try(keggGet(code_path[i]),silent=T)
-    if (class(ll)!="try-error"){
+  found=found$annotated
+  raw_data=found$all
+  raw_data_peptide=raw_data[which(raw_data[,"NBP"]>0),] # Peptide features
+  ppmass=round(as.numeric(raw_data_peptide[,2]),4)
+  raw_data_non_peptide=raw_data[which(raw_data[,"NBP"]==0),]
+  npmass=round(as.numeric(raw_data_non_peptide[,2]),4)
+
+  ll=try(keggGet(code_path),silent=T)
+  if (class(ll)!="try-error"){
       cpds=try(names(ll[[1]]$COMPOUND),silent=T)
       if ((class(cpds)!="NULL") && (class(cpds)!="try-error")) {
-        cpds_mass_list=sapply(cpds,function(x) as.numeric(keggGet(x)[[1]]$EXACT_MASS))
-        cpds_mass_list=round(unlist(cpds_mass_list),4) # Round to 4 values after decimal
-        mass_np=load_KEGG()$mnp
-        mass_p=load_KEGG()$mp
-        mc=c()
-        for (m in 1:length(mass_np)){
-          valid=which(abs(cpds_mass_list-mass_np[m])<=tol2)
-          mc=c(mc,valid)}
-        mp=c()
-        for (m in 1:length(mass_p)){
-          valid=which(abs(cpds_mass_list-mass_p[m])<=tol2)
-          mp=c(mp,valid)}
-        nodes1=names(cpds_mass_list)[which(!is.na(mp))]  # Peptides
-        nodes2=names(cpds_mass_list)[which(!is.na(mc))] # No peptides but matched
-        col1=rep('red',length(nodes1))
-        col2=rep('yellow',length(nodes2))
-        url= color.pathway.by.objects(code_path[i],c(nodes1,nodes2), c(col1,col2), c(col1,col2))
+        cpds=paste0('cpd:',cpds)
+        matched_cpds_ind=match(cpds,kegg_cpds[,1])
+        matched_cpds_ind=matched_cpds_ind[!is.na(matched_cpds_ind)]
+        cpds_mass_list=round(as.numeric(kegg_cpds[matched_cpds_ind,2]),4)
+        cpds_list=kegg_cpds[matched_cpds_ind,1]
+        
+        nodes_peptide=c()
+        nodes_non_peptide=c()
+        for (k in 1:length(cpds_list)){
+          vp=which(abs(cpds_mass_list[k]-ppmass)<=tol2)
+          if (length(vp>0)){nodes_peptide=c(nodes_peptide,cpds_list[k])}
+          vn=which(abs(cpds_mass_list[k]-npmass)<=tol2)
+          if (length(vn>0)){nodes_non_peptide=c(nodes_non_peptide,cpds_list[k])}}
+        
+        if ((length(nodes_peptide)>0) || length(nodes_non_peptide)>0){
+        col1=rep('red',length(nodes_peptide))
+        col2=rep('gold',length(nodes_non_peptide))
+        url= color.pathway.by.objects(code_path,c(nodes_peptide,nodes_non_peptide),c(col1,col2), c(col1,col2))}
       }
     }
   tags$img(src=url)
