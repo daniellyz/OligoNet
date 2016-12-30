@@ -404,51 +404,14 @@ shinyServer(function(input, output) {
        write.table(chains$edges,file,sep="\t",dec=",",row.names=F,col.names=T)}}
  )
 
-
-load_KEGG<- eventReactive(input$goButton3,{  
-
-   if(selected_ex$a==0){found=find_annotation()}
-   else{found=annotated_data$k}
-
-   tol2=found$tol2
-   raw=found$raw_data
-   found=found$annotated
-   
-   row_list_peptide=which(as.numeric(found$all[,"NBP"])>0)
-   masslist=round(as.numeric(found$all[row_list_peptide,2]),digits=4) # only masses annotated to unique combination..
-
-   annotated_index=list()
-   for (m in 1:length(masslist)){
-     valid=which(abs(kegg_cpds[,2]-masslist[m])<=tol2)
-     annotated_index[[m]]=valid}
-   
-   index_cpd=unlist(annotated_index)
-   index_cpd=index_cpd[which(!is.na(index_cpd))]   
-   code_cpd=kegg_cpds[index_cpd,1]
-   
-   pathways=sapply(code_cpd,function(x) keggGet(x)[[1]]$PATHWAY)
-   pn=unique(unlist(lapply(pathways,function(x) names(x))))
-   pathways=unique(unlist(pathways)) # Find all pathway involved
-   
-   code_path=sapply(pn,function(x) str_extract(x,"[[:digit:]]+"))
-   wo=which(kegg_organism[,2]==input$Organism)
-   organism=kegg_organism[wo,1] # Abbreviation of organism chosen
-   code_path=paste0(organism,code_path)
-  
-   all_masses=round(as.numeric(raw[,2]),digits=4)
-   row_list_non_peptide=setdiff(1:nrow(raw),row_list_peptide)# row in additional_data that not correspond to peptides
-   masses_non_peptide=all_masses[row_list_non_peptide]
-   masses_peptide=all_masses[row_list_peptide]
- 
-   list(code_path=code_path,pathway_names=pathways,mnp=masses_non_peptide,mp=masses_peptide)
- })
- 
-
 output$Kegg_pathway <- renderUI({
+  
+  pathway_names=keggList("pathway")
+  pathway_names
+  
   selectInput('pathway', 'Choose your pathway:',load_KEGG()$pathway_names)
   #  code_path=paste0("sce",code_path)
 })
-
 
 output$image<-renderUI({
   
