@@ -56,6 +56,9 @@ shinyServer(function(input, output) {
 
     output_message=c()# Output messages for users
     
+    inFile1=input$file1
+    inFile2=input$file2
+  
     if (!is.null(inFile1) && is.null(inFile2)) {inFile2=inFile1}
      
     if (!is.null(inFile1) && !is.null(inFile2)) { # Check the files users have uploaded
@@ -166,6 +169,7 @@ shinyServer(function(input, output) {
     found=found$annotated
     
     valid=found$all[,"NBP"]>1
+    
     doubled=found$all[valid,]
     MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"])
     
