@@ -144,6 +144,8 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
   monomers_arrondi=round(monomers[,2],appro_dplace)*(10^appro_dplace) # Make every value integer
 
   for (i in 1:length(masslist_arrondi)){
+  #  print(masslist_arrondi[i])
+    valid=c()
     mtry=c(masslist_arrondi[i]-1,masslist_arrondi[i],masslist_arrondi[i]+1) # Test different for rounding effect
     possible_combinations=c()
     for (mass in mtry){
@@ -152,31 +154,27 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
         for (k in 1:length(tmp)){
           kt=strsplit(tmp[k]," ")[[1]]
           kt=kt[3:length(kt)]
-          possible_combinations=rbind(possible_combinations,as.numeric(kt))}
-      }
-    }
-    if (!is.null(possible_combinations)){ # Decomposition succeeded
-      possible_combinations=unique(possible_combinations)
-      calculated_masslist=possible_combinations%*%monomers[,2]
-      valid=which(abs(t(calculated_masslist)-masslist[i])<=tol)
-      if (length(valid)>0){
-          possible_combinations=matrix(possible_combinations[valid,],ncol=nrow(monomers))
-          possible_peptides=c()
-          for (r in 1:nrow(possible_combinations)){
-            position=which(possible_combinations[r,]>0)
-            peptide=paste(paste0(monomers[position,1],possible_combinations[r,position]),collapse="")
-            possible_peptides=c(possible_peptides,peptide)}
-          possible_peptides=paste(possible_peptides,collapse=" ; ")
-          peptide_annotated=c(peptide_annotated,possible_peptides)
-          nb_peptide_annotated=c(nb_peptide_annotated,length(valid))
-         if (length(valid)==1) {unique_row=c(unique_row,i)}
-      }
-      else {peptide_annotated=c(peptide_annotated,"No Peptide Found")
-            nb_peptide_annotated=c(nb_peptide_annotated,0)}}
-    else{peptide_annotated=c(peptide_annotated,"No Peptide Found")
-    nb_peptide_annotated=c(nb_peptide_annotated,0)}
-  }
-  
+          possible_combinations=rbind(possible_combinations,as.numeric(kt))}}
+      if (!is.null(possible_combinations)){ # Decomposition succeeded
+       possible_combinations=unique(possible_combinations)
+       calculated_masslist=possible_combinations%*%monomers[,2]
+       valid=c(valid,which(abs(t(calculated_masslist)-masslist[i])<=tol))} # Confirm correct decompositions
+    if (length(valid)>10) break}   # Until 10 peptides only
+      
+    if (length(valid)>0){
+      possible_combinations=matrix(possible_combinations[valid,],ncol=nrow(monomers))
+      possible_peptides=c()
+      for (r in 1:nrow(possible_combinations)){
+        position=which(possible_combinations[r,]>0)
+        peptide=paste(paste0(monomers[position,1],possible_combinations[r,position]),collapse="")
+        possible_peptides=c(possible_peptides,peptide)}
+    possible_peptides=paste(possible_peptides,collapse=" ; ")
+    peptide_annotated=c(peptide_annotated,possible_peptides)
+    nb_peptide_annotated=c(nb_peptide_annotated,length(valid))
+    if (length(valid)==1) {unique_row=c(unique_row,i)}}
+    else {peptide_annotated=c(peptide_annotated,"No Peptide Found")
+        nb_peptide_annotated=c(nb_peptide_annotated,0)}}
+
   raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
   raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
   unique_data_annotated=raw_data[unique_row,]
@@ -198,8 +196,11 @@ pay<-function(Amount,billList,billCount){
   if (length(billList)>1){
     for (i in seq(maxN,0,by=-1)){
       reminder=Amount-i*billList[1]
-      pay(reminder,billList[2:length(billList)],c(billCount,i))}
+      tmp=pay(reminder,billList[2:length(billList)],c(billCount,i))
+      }
   }
+  
+  
 }
 
 annotate_example<-function(url1,url2,monomers,tol2){

@@ -134,7 +134,7 @@ shinyServer(function(input, output) {
    # save(found,file="FT-annotation.Rdata")
     tol2=found$tol2
     found=found$annotated
-    
+
     UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"])
     masslist=round(as.numeric(found$unique[,2]),4)
 
@@ -204,16 +204,19 @@ shinyServer(function(input, output) {
       found=found$annotated
       
       cor_min=-1
+      delete_triangle=0
       
-      if ("3" %in% input$visual){cor_min=input$cor_min}
-  
+      if ("4" %in% input$visual){cor_min=input$cor_min}
+      if ("2" %in% input$visual){delete_triangle=1}
+      
       index=which(colnames(found$unique_add)==input$Etiquette)
+      network=network_generator(found$unique,found$unique_add,cor_min,index,monomers()$elements,delete_triangle)
       
-      network=network_generator(found$unique,found$unique_add,cor_min,index,monomers()$elements)
-      
-      if (("2" %in% input$visual) || (selected_ex$a!=0)){ # remove amino acids in the example files
+      if ("3" %in% input$visual){ # remove amino acids in the example files
         network=filter_amino_acid(network,monomers()$elements)}
-  network})
+      network
+      
+      })
   
   output$networkPlot <- renderVisNetwork({
 
@@ -450,7 +453,7 @@ output$image<-renderUI({
         
         if ((length(nodes_peptide)>0) || length(nodes_non_peptide)>0){
         col1=rep('red',length(nodes_peptide))
-        col2=rep('gold',length(nodes_non_peptide))
+        col2=rep('navy',length(nodes_non_peptide))
         url= color.pathway.by.objects(code_path,c(nodes_peptide,nodes_non_peptide),c(col1,col2), c(col1,col2))}
       }
     }

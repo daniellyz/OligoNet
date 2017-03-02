@@ -6,7 +6,7 @@ options(warn=-1)
 
 # Script for edge & node calculation
 
-network_generator<-function(unique,unique_add,cor_min,index,elements){
+network_generator<-function(unique,unique_add,cor_min,index,elements,delete_triangle){
   
   I_matrix=unique[,3:(ncol(unique)-2)]
   class(I_matrix)='numeric'
@@ -40,11 +40,12 @@ network_generator<-function(unique,unique_add,cor_min,index,elements){
   g=graph(vectorized)
   cor_list=as.numeric(cor_list)
   
-  valid=filter_graph(g,from_list,to_list) # Filter short chains 
-  from_list=from_list[valid]
-  to_list=to_list[valid]
-  diff_list=diff_list[valid]
-  cor_list=cor_list[valid]
+  if (delete_triangle==1){
+    valid=filter_graph(g,from_list,to_list) # Filter short chains 
+    from_list=from_list[valid]
+    to_list=to_list[valid]
+    diff_list=diff_list[valid]
+    cor_list=cor_list[valid]}
   
   vectorized=as.vector(rbind(from_list,to_list))
   g=graph(vectorized) # igraph object
@@ -71,6 +72,7 @@ network_generator<-function(unique,unique_add,cor_min,index,elements){
   colnames(edges)=c("Source","Target","Loss")
   
   return(list(links=links,nodes=nodes,from=from_list,to=to_list,diff_list=diff_list,edges=edges,cor=cor_list,g=g))}
+
 
 # Find common pattern modules
 
