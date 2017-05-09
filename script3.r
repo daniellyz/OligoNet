@@ -63,8 +63,9 @@ createLink <- function(val) {
     else {
       cpds=strsplit(val[i], " , ")[[1]] # All cpds
       cpds=paste0(cpds,collapse="+")
-      site=paste0('<a href="http://www.genome.jp/dbget-bin/www_bget?',cpds,'">',cpds,'</a>')
-      link_list=c(link_list,site)}}
+    #  site=paste0('<a href="http://www.genome.jp/dbget-bin/www_bget?',cpds,'">',cpds,'</a>')
+      site=a(cpds,href=paste0("http://www.genome.jp/dbget-bin/www_bget?",cpds),target="_blank")
+      link_list=c(link_list,as.character(site))}}
   return(link_list) 
 }
 #'<a href="http://rstudio.com">RStudio</a>'

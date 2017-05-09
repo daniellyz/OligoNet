@@ -27,9 +27,9 @@ shinyUI(fluidPage(
            h3('A) Upload metabolomics data'),
            
            fileInput('file1', 'File 1: ID + Neutral Mass + Intensities',
-                     accept = c('dat/tab-separated-value','text/tab-separated-values')),
+                     accept = c('.txt','.dat','.csv')),
            fileInput('file2', 'File 2: ID + Additional Informations (Optional)',
-                     accept = c('dat/tab-separated-value','text/tab-separated-values')),
+                     accept = c('.txt','.dat','.csv')),
            
            actionButton("Example1", "Run Example 1: Yeast metabolic profiling by FT-ICR-MS"),
            h3(),
@@ -44,7 +44,7 @@ shinyUI(fluidPage(
            checkboxInput("checkbox", label = "Use DECOMP server (Faster)", value = FALSE),
            # p('Default alphabets (subunits):', a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt', 'amino-acid.txt')),
            fileInput('file3', label=a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt','File 3: Modify the default amino acid file (optional)', target="_blank"),
-                     accept = c('dat/tab-separated-value','text/tab-separated-values')),
+                     accept = c('.txt','.dat','.csv')),
            radioButtons("TE", label="Please select the nature of your mass:", 
                         choices = list("Theoritical mass" = 1, "Experimental mass with error (Da):" = 2),selected = 1),
            numericInput('tol', '', 0.01,min=1e-5,max=0.5),
