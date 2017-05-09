@@ -27,9 +27,9 @@ shinyUI(fluidPage(
            h3('A) Upload metabolomics data'),
            
            fileInput('file1', 'File 1: ID + Neutral Mass + Intensities',
-                     accept = c('dat/tab-separated-value','text/tab-separated-values')),
+                     accept = c('.txt','.dat','.csv')),
            fileInput('file2', 'File 2: ID + Additional Informations (Optional)',
-                     accept = c('dat/tab-separated-value','text/tab-separated-values')),
+                     accept = c('.txt','.dat','.csv')),
            
            actionButton("Example1", "Run Example 1: Yeast metabolic profiling by FT-ICR-MS"),
            h3(),

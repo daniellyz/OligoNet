@@ -33,8 +33,8 @@ shinyServer(function(input, output) {
     inFile3=input$file3
      
     if (is.null(inFile3)){
-      monomers=read.csv('https://raw.githubusercontent.com/daniellyz/OligoNet/master/amino-acid-basic.txt',sep='\t',dec=',',header=F,stringsAsFactors = F)}
-    else{monomers=read.csv(inFile3$datapath,sep='',dec=',',header=F,stringsAsFactors = F)}
+      monomers=read.csv('https://raw.githubusercontent.com/daniellyz/OligoNet/master/amino-acid-basic.txt',sep='\t',dec='.',header=F,stringsAsFactors = F)}
+    else{monomers=read.csv(inFile3$datapath,sep='',dec='.',header=F,stringsAsFactors = F)}
     
     condensation=monomers[1,2]
     
