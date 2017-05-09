@@ -43,7 +43,7 @@ shinyUI(fluidPage(
            
            checkboxInput("checkbox", label = "Use DECOMP server (Faster)", value = FALSE),
            # p('Default alphabets (subunits):', a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt', 'amino-acid.txt')),
-           fileInput('file3', label=a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt','File 3: Modify the default amino acid file (optional)'),
+           fileInput('file3', label=a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt','File 3: Modify the default amino acid file (optional)', target="_blank"),
                      accept = c('dat/tab-separated-value','text/tab-separated-values')),
            radioButtons("TE", label="Please select the nature of your mass:", 
                         choices = list("Theoritical mass" = 1, "Experimental mass with error (Da):" = 2),selected = 1),

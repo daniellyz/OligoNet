@@ -63,8 +63,8 @@ shinyServer(function(input, output) {
      
     if (!is.null(inFile1) && !is.null(inFile2)) { # Check the files users have uploaded
          
-      raw_data=data.matrix(read.table(inFile1$datapath,sep='\t',dec=',',header=T,stringsAsFactors = F))
-      additional_data=data.matrix(read.table(inFile2$datapath,sep='\t',dec=',',header=T,stringsAsFactors = F))
+      raw_data=data.matrix(read.table(inFile1$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))
+      additional_data=data.matrix(read.table(inFile2$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))
   
       if (!identical(raw_data[,1],additional_data[,1])){
         output_message=c(output_message,"The two data matrices must have identical ids")
