@@ -41,7 +41,7 @@ shinyUI(fluidPage(
     column(4, offset = 0,
            h3('B) Perform decomposition'),
            
-           checkboxInput("checkbox", label = "Use DECOMP server (Faster)", value = FALSE),
+           checkboxInput("checkbox", label = "Use DECOMP server (Faster)", value = TRUE),
            # p('Default alphabets (subunits):', a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt', 'amino-acid.txt')),
            fileInput('file3', label=a(href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt','File 3: Modify the default amino acid file (optional)', target="_blank"),
                      accept = c('.txt','.dat','.csv')),

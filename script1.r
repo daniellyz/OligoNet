@@ -68,10 +68,11 @@ send_curl<-function(mass_list,monomers,tol,DecompID,dplace){
 
 # Script for data annotation from DECOMP results:
 
-peptide_annotation<-function(raw_data,additional_data,results,tol){
+peptide_annotation<-function(raw_data,additional_data,results,tol,monomers,condensation){
   
   peptide_annotated=c() # List of all peptide annotations (including no-annotation & duplex annotations)
   nb_peptide_annotated=c() # List of number of peptide annotations for each mass
+  error_annotated=c() # List of ppm errors for each mass
   
   unique_peptide_annotated=c() # List of valid peptides with unique annotation
   unique_row=c() # Selected row that represent an unique annotation of peptides
@@ -87,6 +88,7 @@ peptide_annotation<-function(raw_data,additional_data,results,tol){
     
     annotations=strsplit(results[i],"\n")
     annotations=annotations[[1]]
+
     if (length(annotations)>1){
       
       possible_list=c() # All possible annotations for the same mass
@@ -95,11 +97,13 @@ peptide_annotation<-function(raw_data,additional_data,results,tol){
         
         if (abs(error)< tol){ # Computational error filtering
           letters=strsplit(annotations[k],split="\\(")[[1]][1]
-          possible_list=c(possible_list,gsub(" ","",letters))}}
+          possible_list=c(possible_list,gsub(" ","",letters))}
+      }
       
       if (length(possible_list)==0){ # if no peptide annoation possible
         nb_peptide_annotated=c(nb_peptide_annotated,0)
         peptide_annotated=c(peptide_annotated,"No Peptide Found")
+        error_annotated=c(error_annotated,"NA")
       }
       
       else if (length(possible_list)==1){ # If only one peptide annotation possible
@@ -107,32 +111,43 @@ peptide_annotation<-function(raw_data,additional_data,results,tol){
         peptide_annotated=c(peptide_annotated,possible_list)
         nb_peptide_annotated=c(nb_peptide_annotated,1)
         unique_peptide_annotated=c(unique_peptide_annotated,possible_list) # List of valid peptides with unique annotation
-        unique_row=c(unique_row,i)}
+        unique_row=c(unique_row,i)
+        ppm_error=ppm_calc(possible_list,monomers,condensation,raw_data[i,2])
+        error_annotated=c(error_annotated,ppm_error)}
       
-      else {peptide_annotated=c(peptide_annotated,paste(possible_list,collapse=";"))
-      nb_peptide_annotated=c(nb_peptide_annotated,length(possible_list))}
+      else { # If multiple annotation possible
+        peptide_annotated=c(peptide_annotated,paste(possible_list,collapse=";"))
+        nb_peptide_annotated=c(nb_peptide_annotated,length(possible_list))
+        error_list=c()
+        for (t in 1:length(possible_list)){
+          ppm_error=ppm_calc(possible_list[t],monomers,condensation,raw_data[i,2])
+          error_list=c(error_list,ppm_error)}
+        ppm_error=paste0(error_list,collapse=";")
+        error_annotated=c(error_annotated,ppm_error)}
     }
     else{
       peptide_annotated=c(peptide_annotated,"No Peptide Found")
       nb_peptide_annotated=c(nb_peptide_annotated,0)
+      error_annotated=c(error_annotated,"NA")
     }
   }
       # If multiple possible annotations
- raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
- raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
+ raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
+ raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
  unique_data_annotated=raw_data[unique_row,]
- unique_data_additional=cbind(additional_data[unique_row,],Peptide=unique_peptide_annotated)
+ unique_data_additional=cbind(additional_data[unique_row,],Peptide=unique_peptide_annotated,PPM=error_annotated[unique_row])
 
  return(list(all=raw_data,all_add=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
 # Script for data annotation from recursive functinon:
 
 
-peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_data,tol){
+peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_data,tol,condensation){
   
   peptide_annotated=c() # List of all peptide annotations (including no-annotation & duplex annotations)
   nb_peptide_annotated=c() # List of number of peptide annotations for each mass
   unique_row=c() # Selected row that represent an unique annotation of peptides
+  error_annotated=c()
   
   monomers[,2]=round(monomers[,2],dplace)
   
@@ -142,10 +157,9 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
 
   masslist_arrondi=round(masslist,appro_dplace)*(10^appro_dplace)
   monomers_arrondi=round(monomers[,2],appro_dplace)*(10^appro_dplace) # Make every value integer
-
+  
   for (i in 1:length(masslist_arrondi)){
   #  print(masslist_arrondi[i])
-    valid=c()
     mtry=c(masslist_arrondi[i]-1,masslist_arrondi[i],masslist_arrondi[i]+1) # Test different for rounding effect
     possible_combinations=c()
     for (mass in mtry){
@@ -158,29 +172,44 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
       if (!is.null(possible_combinations)){ # Decomposition succeeded
        possible_combinations=unique(possible_combinations)
        calculated_masslist=possible_combinations%*%monomers[,2]
-       valid=c(valid,which(abs(t(calculated_masslist)-masslist[i])<=tol))} # Confirm correct decompositions
-    if (length(valid)>10) break}   # Until 10 peptides only
-      
-    if (length(valid)>0){
-      possible_combinations=matrix(possible_combinations[valid,],ncol=nrow(monomers))
+       valid=which(abs(t(calculated_masslist)-masslist[i])<=tol)# Confirm correct decompositions
+       possible_combinations=matrix(possible_combinations[valid,],ncol=nrow(monomers))
+    if (nrow(possible_combinations)>10) break}}   # Until 10 peptides only
+    
+    if (!is.null(possible_combinations)){
+      if (nrow(possible_combinations)>0){
       possible_peptides=c()
+      error_list=c()
       for (r in 1:nrow(possible_combinations)){
         position=which(possible_combinations[r,]>0)
         peptide=paste(paste0(monomers[position,1],possible_combinations[r,position]),collapse="")
-        possible_peptides=c(possible_peptides,peptide)}
-    possible_peptides=paste(possible_peptides,collapse=" ; ")
-    peptide_annotated=c(peptide_annotated,possible_peptides)
-    nb_peptide_annotated=c(nb_peptide_annotated,length(valid))
-    if (length(valid)==1) {unique_row=c(unique_row,i)}}
-    else {peptide_annotated=c(peptide_annotated,"No Peptide Found")
-        nb_peptide_annotated=c(nb_peptide_annotated,0)}}
+        ppm_error=ppm_calc(peptide,monomers,condensation,raw_data[i,2])
+        possible_peptides=c(possible_peptides,peptide)
+        error_list=c(error_list,ppm_error)}
+      
+      possible_peptides=paste(possible_peptides,collapse=" ; ")
+      error_list=paste(error_list,collapse=" ; ")
+      peptide_annotated=c(peptide_annotated,possible_peptides)
+      error_annotated=c(error_annotated,error_list)
+      nb_peptide_annotated=c(nb_peptide_annotated,length(valid))}
+    
+    if (nrow(possible_combinations)==1) {unique_row=c(unique_row,i)}
+     
+    if (nrow(possible_combinations)==0){   
+        peptide_annotated=c(peptide_annotated,"No Peptide Found")
+        nb_peptide_annotated=c(nb_peptide_annotated,0)
+        error_annotated=c(error_annotated,"NA")}}
+    
+    else{peptide_annotated=c(peptide_annotated,"No Peptide Found")
+    nb_peptide_annotated=c(nb_peptide_annotated,0)
+    error_annotated=c(error_annotated,"NA")}}
 
-  raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
-  raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated)
-  unique_data_annotated=raw_data[unique_row,]
-  unique_data_additional=cbind(additional_data[unique_row,],Peptide=peptide_annotated[unique_row])
+   raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
+   raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
+   unique_data_annotated=raw_data[unique_row,]
+   unique_data_additional=cbind(additional_data[unique_row,],Peptide=peptide_annotated[unique_row],PPM=error_annotated[unique_row])
   
-  return(list(all=raw_data,all_add=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
+   return(list(all=raw_data,all_add=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
 # Recursive function:
 pay<-function(Amount,billList,billCount){
@@ -199,8 +228,6 @@ pay<-function(Amount,billList,billCount){
       tmp=pay(reminder,billList[2:length(billList)],c(billCount,i))
       }
   }
-  
-  
 }
 
 annotate_example<-function(url1,url2,monomers,tol2){

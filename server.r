@@ -61,10 +61,11 @@ shinyServer(function(input, output) {
     inFile1=input$file1
     inFile2=input$file2
   
-    if (!is.null(inFile1) && is.null(inFile2)) {inFile2=inFile1}
+    if (!is.null(inFile1) && is.null(inFile2)) {
+      inFile2=inFile1}
      
     if (!is.null(inFile1) && !is.null(inFile2)) { # Check the files users have uploaded
-         
+      
       raw_data=data.matrix(read.table(inFile1$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))
       additional_data=data.matrix(read.table(inFile2$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))
   
@@ -110,10 +111,10 @@ shinyServer(function(input, output) {
         else { # If everything OK
             output_message=c(output_message, "Decomposition succeeded! please download decomposition results!")
             output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
-            annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2)}}
+            annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2,monomers()$tab,monomers()$condensation)}}
       
       else { # Not use DECOMP server 
-        annotated=peptide_annotation_slow(mass_list,dplace,monomers()$tab,raw_data,additional_data,tol2)       
+        annotated=peptide_annotation_slow(mass_list,dplace,monomers()$tab,raw_data,additional_data,tol2,monomers()$condensation)       
         output_massage="Decomposition succeeded! please download decomposition results!"}}
  list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)
   })
@@ -133,11 +134,10 @@ shinyServer(function(input, output) {
     if(selected_ex$a==0){found=find_annotation()}
     else{found=annotated_data$k}
     
-   # save(found,file="FT-annotation.Rdata")
     tol2=found$tol2
     found=found$annotated
 
-    UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"])
+    UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"],Error_ppm=found$unique[,"PPM"])
     masslist=round(as.numeric(found$unique[,2]),4)
 
     annotated_index=list()
@@ -156,8 +156,8 @@ shinyServer(function(input, output) {
      else{cpd_code="0"}
     annotated_cpd=c(annotated_cpd,cpd_code)}
     UAAC <- cbind(UAAC,createLink(annotated_cpd))
-    colnames(UAAC)[4]="KEGG"
-    UAAC=datatable(UAAC,escape=c(TRUE, TRUE,TRUE, FALSE))
+    colnames(UAAC)[5]="KEGG"
+    UAAC=datatable(UAAC,escape=c(TRUE,TRUE,TRUE,TRUE,FALSE))
 
     return(UAAC)
   })
@@ -173,7 +173,7 @@ shinyServer(function(input, output) {
     valid=found$all[,"NBP"]>1
     
     doubled=found$all[valid,]
-    MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"])
+    MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"],Error_ppm=doubled[,"PPM"])
     
     masslist=round(as.numeric(doubled[,2]),4)
 
@@ -194,8 +194,8 @@ shinyServer(function(input, output) {
       else{cpd_code="0"}
       annotated_cpd=c(annotated_cpd,cpd_code)}
     MAAP <- cbind(MAAP,createLink(annotated_cpd))
-    colnames(MAAP)[5]="KEGG"
-    MAAP=datatable(MAAP,escape=c(TRUE, TRUE,TRUE, TRUE, FALSE))
+    colnames(MAAP)[6]="KEGG"
+    MAAP=datatable(MAAP,escape=c(TRUE,TRUE,TRUE,TRUE,TRUE,FALSE))
     return(MAAP)})
   
   load_network <- eventReactive(input$goButtonbis,{
