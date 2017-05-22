@@ -6,9 +6,9 @@ options(warn=-1)
 
 # Script for edge & node calculation
 
-network_generator<-function(unique,unique_add,cor_min,index,elements,delete_triangle){
+network_generator<-function(unique,unique_add,cor_min,cor_max,index,col_list,elements,delete_triangle){
   
-  I_matrix=unique[,3:(ncol(unique)-2)]
+  I_matrix=unique[,3:(ncol(unique)-3)]
   class(I_matrix)='numeric'
   
   elements=sort(elements)
@@ -18,7 +18,7 @@ network_generator<-function(unique,unique_add,cor_min,index,elements,delete_tria
   diff_list=c()
   cor_list=c()
   
-  peptides=unique[,ncol(unique)]
+  peptides=unique[,"Peptide"]
   peptide_list=lapply(peptides,composition_formula,elements)
   
   for (p in 1:(length(peptide_list)-1)){
@@ -26,7 +26,7 @@ network_generator<-function(unique,unique_add,cor_min,index,elements,delete_tria
       dis=peptide_list[[q]]-peptide_list[[p]]
       coef=cor(I_matrix[p,],I_matrix[q,],method="spearman")
       if (is.na(coef)){coef=-1}
-      if (all(dis>=0) && coef>=cor_min){
+      if (all(dis>=0) && coef>=cor_min && coef<=cor_max){
         from_list=c(from_list,ID_list[q])
         to_list=c(to_list,ID_list[p])
         diff_names=elements[which(dis>0)]
@@ -59,14 +59,15 @@ network_generator<-function(unique,unique_add,cor_min,index,elements,delete_tria
   unique_ID=sort(unique(c(from_list,to_list)))
   ID_list=as.numeric(unique_add[,1])
   matched_row=match(unique_ID,ID_list)
-  unique_add2=unique_add[matched_row,]
+  unique_add2=unique_add[matched_row,] # only the nodes in the network
+  col_list=col_list[matched_row]
   
   nodes <- data.frame(id = as.numeric(unique_add2[,1]))
   nodes$shape='dot'
   nodes$shadow <- TRUE 
   nodes$title <- unique_add2[,index]
-  nodes$label <- unique_add2[,ncol(unique_add2)]
-  nodes$color.background='blue'
+  nodes$label <- unique_add2[,"Peptide"]
+  nodes$color.background=col_list
   
   edges=cbind(from_list,to_list,diff_list)
   colnames(edges)=c("Source","Target","Loss")

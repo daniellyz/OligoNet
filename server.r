@@ -21,14 +21,12 @@ kegg_organism=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/m
 kegg_cpds=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_cpds.txt",sep="\t",header=F,stringsAsFactors = F)
 kegg_paths=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_pathway.txt",sep="\t",header=F,stringsAsFactors = F)
 
-#deployApp(server="shinyapps.io",appName="OligoNet-V7")
+#deployApp(server="shinyapps.io",appName="OligoNet-V8")
 
 #### Shiny ####
-shinyServer(function(input, output) {
+shinyServer(function(input, output,clientData, session) {
   
-  selected_ex<-reactiveValues(a=0) # Which ex selected for execution, 0= no example
-  annotated_data<-reactiveValues(k=list()) # If chosen from example, the decomposed data
-  annotated_network<-reactiveValues(n=list()) # If chosen from example, the network
+  mms<-reactiveValues(k=character())
   
   monomers<-reactive({
   
@@ -55,117 +53,135 @@ shinyServer(function(input, output) {
 
     annotated=NULL
     raw_data=NULL
-
-    output_message=c()# Output messages for users
+    additional_data=NULL
+    dplace=NULL
+    tol2=NULL
+    input_str_matrix=NULL
     
     inFile1=input$file1
     inFile2=input$file2
-  
-    if (!is.null(inFile1) && is.null(inFile2)) {
-      inFile2=inFile1}
+
+    if (!is.null(inFile1)){ # Check file 1
+      raw_data=data.matrix(read.table(inFile1$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))}
+    
+    if ((is.null(inFile1)) && (input$blank_file1!="")){ # Read from the blank area instead
+      input_str=input$blank_file1
+      input_str=strsplit(input_str,"\n")
+      input_str=input_str[[1]]
+      header=strsplit(input_str[1],"\t")[[1]]
+      ncolumns=length(header) # Number of columns of the matrix
+      raw_data=sapply(input_str[2:length(input_str)],function(x) strsplit(x,"\t"))
+      raw_data=do.call(rbind,raw_data)
+      rownames(raw_data)=NULL
+      raw_data=apply(raw_data,2,as.numeric)
+      colnames(raw_data)=header
+    }
+    
+    if (!is.null(inFile2)){ # Check file 2
+    additional_data=data.matrix(read.table(inFile2$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))}
      
-    if (!is.null(inFile1) && !is.null(inFile2)) { # Check the files users have uploaded
+    if (!is.null(raw_data) && is.null(additional_data)){
+    additional_data=raw_data}  # Default value for second file
+    
+    if (!is.null(raw_data) && !is.null(additional_data)){ # Start parameter checking
       
-      raw_data=data.matrix(read.table(inFile1$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))
-      additional_data=data.matrix(read.table(inFile2$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))
-  
+      output_message1=c("Check input data format and parameters...")  # Output messages for users
+      
+      if (ncol(raw_data)<3){
+        output_message1=c(output_message1,"File 1 format not valid")
+        raw_data=addional_data=annotated=NULL}
+      
+      if (!(all(raw_data[,2]>0 & raw_data[,2]<10000))){
+        output_message1=c(output_message1,"File 1 format not valid")
+        raw_data=addional_data=annotated=NULL}
+      
       if (!identical(raw_data[,1],additional_data[,1])){
-        output_message=c(output_message,"The two data matrices must have identical ids")
+        output_message1=c(output_message1,"File 1 and File 2 must have identical ids")
         raw_data=addional_data=annotated=NULL}
       
       if (nrow(monomers()$tab)<2){
-        output_message=c(output_message,"Not enough subunits for decomposition")
+        output_message1=c(output_message1,"Not enough subunits for decomposition")
         raw_data=addional_data=annotated=NULL}
+      
+      if (!(input$tol>=0 & input$tol<1)){
+        output_message1=c(output_message1,"Mass error must between 0 and 1 Da")
+        raw_data=addional_data=annotated=NULL} 
       
       if ((ncol(raw_data)<12) && (ncol(raw_data)>=3)){
-        output_message=c(output_message,"Warning: At least 10 samples are needed to calculate correlations between nodes")}
-      
-      if (ncol(raw_data)<3){
-        output_message=c(output_message,"File format not valid")
-        raw_data=addional_data=annotated=NULL}
-      }
+        output_message1=c(output_message1,"Warning: At least 10 samples are needed to calculate correlations between nodes")}
     
+    output_message1=cat(paste0(output_message1,collapse="\n"))
+    mms$k=output_message1
+}
     if (!is.null(raw_data) && !is.null(additional_data)){ # If everything is fine we proceed 
       
+      mms$k="Input format is valid. Start mass decomposition... "
+
       if (ncol(raw_data)==3){raw_data=cbind(raw_data,III=rep(20,nrow(raw_data)))}
       
       dplace_raw_data=decimalnumcount(as.character(raw_data[2,2])) # decimal place
       dplace_monomers=decimalnumcount(as.character(monomers()$tab[2,2]))
       dplace=min(dplace_raw_data,dplace_monomers) # decimal place taken for rounding
 
+      if (input$Scan==2) {raw_data[,2]=raw_data[,2]-1.00737}
+      if (input$Scan==3) {raw_data[,2]=raw_data[,2]+1.00737}
+      
       mass_list=round(raw_data[,2]-monomers()$condensation,dplace)
       
       tol1=0.01 # Default tolerance for Decomp (Theoritical)
-      tol2=0.00001 # Default tolerance for filtering (Theoritical-Computational error)
-
-      if (input$TE==2){tol2=input$tol}
       
+      tol2=input$tol
+      
+      if (tol2==0){tol2=0.00001} # Default tolerance for filtering (Theoritical-Computational error)
+
       if (input$checkbox){# Use DECOMP server
       
         results=send_curl(mass_list,monomers()$tab,tol1,input$DecompID,dplace) # bielefeld results
       
         if (results$p3=="No response from the server"){ # If no output from the server
             annotated=NULL
-            output_message=c(output_message,"The decomposition failed, please submit your job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp")}
+            mms$k="The decomposition failed, but you can submit the job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp"
+          }
         
         else { # If everything OK
-            output_message=c(output_message, "Decomposition succeeded! please download decomposition results!")
-            output_massage=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
+            mms$k="Decomposition succeeded! Please check the results on the next tabpanel!"
+            #output_message=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
             annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2,monomers()$tab,monomers()$condensation)}}
       
       else { # Not use DECOMP server 
         annotated=peptide_annotation_slow(mass_list,dplace,monomers()$tab,raw_data,additional_data,tol2,monomers()$condensation)       
-        output_massage="Decomposition succeeded! please download decomposition results!"}}
- list(annotated=annotated,output_message=output_message,raw_data=raw_data,dplace=dplace,tol2=tol2)
+        mms$k="Decomposition succeeded! Please check the results on the next tabpanel!"
+        }
+  }
+ list(annotated=annotated,raw_data=raw_data,dplace=dplace,tol2=tol2)
   })
-    
-  output$summary <- renderPrint({
-    if(selected_ex$a==0){
-    output=find_annotation()$output_message
-    }
-    else {
-    output=annotated_data$k
-    output=output$output_message}
-    cat(paste0(output,collapse="\n"))
-    })
   
-  output$table1 <- renderDataTable({
+  observe({
+    mms$k
+    if (length(mms$k)>0){
     
-    if(selected_ex$a==0){found=find_annotation()}
-    else{found=annotated_data$k}
+    output$blank_message1<-renderPrint(mms$k)}
+ 
+ 
+  })
+
+ output$table1 <- renderDataTable({
+    
+    found=find_annotation()
     
     tol2=found$tol2
     found=found$annotated
 
     UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"],Error_ppm=found$unique[,"PPM"])
-    masslist=round(as.numeric(found$unique[,2]),4)
 
-    annotated_index=list()
-    for (m in 1:length(masslist)){
-      valid=which(abs(kegg_cpds[,2]-masslist[m])<=tol2)
-      annotated_index[[m]]=valid}
-    annotated_cpd=c()
-    for (i in 1:length(annotated_index)){
-      if (length(annotated_index[[i]])==1){
-        cpd_code=kegg_cpds[annotated_index[[i]],1]
-        cpd_code=strsplit(cpd_code,"cpd:")[[1]][2]}
-      else if (length(annotated_index[[i]])>1){
-        cpd_code=kegg_cpds[annotated_index[[i]],1]
-        cpd_code=sapply(cpd_code,function(x) strsplit(x,"cpd:")[[1]][2])
-        cpd_code=paste0(cpd_code,collapse = " , ")}
-     else{cpd_code="0"}
-    annotated_cpd=c(annotated_cpd,cpd_code)}
-    UAAC <- cbind(UAAC,createLink(annotated_cpd))
-    colnames(UAAC)[5]="KEGG"
-    UAAC=datatable(UAAC,escape=c(TRUE,TRUE,TRUE,TRUE,FALSE))
+    UAAC=datatable(UAAC,escape=c(TRUE,TRUE,TRUE,TRUE))
 
     return(UAAC)
   })
   
   output$table2 <- renderDataTable({
   
-    if(selected_ex$a==0){found=find_annotation()}
-    else{found=annotated_data$k}
+    found=find_annotation()
     
     tol2=found$tol2
     found=found$annotated
@@ -175,44 +191,33 @@ shinyServer(function(input, output) {
     doubled=found$all[valid,]
     MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"],Error_ppm=doubled[,"PPM"])
     
-    masslist=round(as.numeric(doubled[,2]),4)
-
-    annotated_index=list()
-    for (m in 1:length(masslist)){
-      valid=which(abs(kegg_cpds[,2]-masslist[m])<=tol2)
-      annotated_index[[m]]=valid}
-    
-    annotated_cpd=c()
-    for (i in 1:length(annotated_index)){
-      if (length(annotated_index[[i]])==1){
-        cpd_code=kegg_cpds[annotated_index[[i]],1]
-        cpd_code=strsplit(cpd_code,"cpd:")[[1]][2]}
-      else if (length(annotated_index[[i]])>1){
-        cpd_code=kegg_cpds[annotated_index[[i]],1]
-        cpd_code=sapply(cpd_code,function(x) strsplit(x,"cpd:")[[1]][2])
-        cpd_code=paste0(cpd_code,collapse = " , ")}
-      else{cpd_code="0"}
-      annotated_cpd=c(annotated_cpd,cpd_code)}
-    MAAP <- cbind(MAAP,createLink(annotated_cpd))
-    colnames(MAAP)[6]="KEGG"
-    MAAP=datatable(MAAP,escape=c(TRUE,TRUE,TRUE,TRUE,TRUE,FALSE))
+    MAAP=datatable(MAAP,escape=c(TRUE,TRUE,TRUE,TRUE,TRUE))
     return(MAAP)})
   
   load_network <- eventReactive(input$goButtonbis,{
     
-      if(selected_ex$a==0){found=find_annotation()}
-      else{found=annotated_data$k}
-    
+      found=find_annotation()
       found=found$annotated
       
       cor_min=-1
+      
       delete_triangle=0
       
-      if ("4" %in% input$visual){cor_min=input$cor_min}
+      if ("4" %in% input$visual2){
+        cor_min=input$cor_min_max[1]
+        cor_max=input$cor_min_max[2]
+        }
       if ("2" %in% input$visual){delete_triangle=1}
       
       index=which(colnames(found$unique_add)==input$Etiquette)
-      network=network_generator(found$unique,found$unique_add,cor_min,index,monomers()$elements,delete_triangle)
+      
+      index2=which(colnames(found$unique_add)==input$NetworkColor)
+      selected_vector=as.character(found$unique_add[,index2])
+      index_modality=which(selected_vector==input$Modality) # Which nodes will be colored in red
+      col_list=rep("blue",nrow(found$unique_add))
+      col_list[index_modality]="red"
+      
+      network=network_generator(found$unique,found$unique_add,cor_min,cor_max,index,col_list,monomers()$elements,delete_triangle)
       
       if ("3" %in% input$visual){ # remove amino acids in the example files
         network=filter_amino_acid(network,monomers()$elements)}
@@ -223,8 +228,7 @@ shinyServer(function(input, output) {
   output$networkPlot <- renderVisNetwork({
 
     choose_to_show="1" %in% input$visual
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
+    whole_network=load_network()
     
    #save(whole_network,file="FT-network.Rdata")
     if (!is.null(whole_network) && choose_to_show){
@@ -232,26 +236,20 @@ shinyServer(function(input, output) {
   })
   
   output$Distribution_degree<-renderPlot({
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
-    
+    whole_network=load_network()
     deg_in <- degree(whole_network$g, mode="all")
     deg_in=deg_in[which(deg_in>=1)]
     plot(rank(-deg_in),as.numeric(deg_in),xlab="Rank",ylab="Degree")
 })
   
   output$Distribution_edge<-renderPlot({
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
-    
+    whole_network=load_network()
     count_diff=table(whole_network$diff_list)
     plot(rank(-count_diff),as.numeric(count_diff),xlab="Rank",ylab="Occurences")
 })  
   
   output$Top_edge<-renderPlot({
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
-    
+    whole_network=load_network()
     count_diff=table(whole_network$diff_list)
     count_diff=sort(count_diff,decreasing = T)
     most_rank=ceiling(length(count_diff)*0.2)
@@ -259,14 +257,12 @@ shinyServer(function(input, output) {
   })  
   
   output$Distribution_correlation<-renderPlot({
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
+    whole_network=load_network()
     hist(whole_network$cor,xlab="Spearman correlation coefficient",ylab="Frequency",main="")
 })  
   
   output$Distribution_length<-renderPlot({
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
+    whole_network=load_network()
     g=whole_network$g
     nodes=whole_network$nodes
     dl=c()
@@ -281,9 +277,7 @@ shinyServer(function(input, output) {
   })  
   
   find_cores<-reactive({
-    
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
+    whole_network=load_network()
     deg_in <- degree(whole_network$g, mode="in")
     #print(deg_in)
     w_in=which(deg_in>4)
@@ -293,16 +287,13 @@ shinyServer(function(input, output) {
   })
   
   find_chains<-reactive({
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
+    whole_network=load_network()
     all_chains=degrade_chain_all(whole_network,3)
     all_chains
   })
     
   output$networkPlot1 <- renderVisNetwork({
-
-    if(selected_ex$a==0){whole_network=load_network()}
-    else{whole_network=annotated_network$n}
+    whole_network=load_network()
     if (!is.null(whole_network)){
       chains_list=find_chains()
       paths_list=chains_list$paths
@@ -311,22 +302,19 @@ shinyServer(function(input, output) {
         path=paths_list[[wp]]
         chains=generate_degrade_chain(whole_network,path)
         visNetwork(chains$nodes, chains$links)}}
- })
+    })
   
  output$Controls <- renderUI({
     selectInput('Cores', 'Choose cores:',find_cores()$labels)
   })
  
  output$Chains <- renderUI({
-   
    found_chains=find_chains()
    selectInput('Start', 'Choose chain that starts with:',found_chains$start_labels)
  })
 
  output$networkPlot3 <- renderVisNetwork({
-
-   if(selected_ex$a==0){whole_network=load_network()}
-   else{whole_network=annotated_network$n}
+   whole_network=load_network()
    if (!is.null(whole_network)){
     wp=which(find_cores()$labels==input$Cores)
     if (length(wp)>0){
@@ -336,12 +324,10 @@ shinyServer(function(input, output) {
  })
  
  output$downloadAnnotation<-downloadHandler(
-   
    filename = function() {
      "annotation.txt"},
    content = function(file) {
-     if(selected_ex$a==0){found=find_annotation()}
-     else{found=annotated_data$k}
+     found=find_annotation()
      tol2=found$tol2
      found=found$annotated
      masslist=round(as.numeric(found$all[,2]),digits=4) # only masses annotated to unique combination..
@@ -365,19 +351,36 @@ shinyServer(function(input, output) {
 )
  
  output$Shows <- renderUI({
-   if(selected_ex$a==0){found=find_annotation()}
-   else{found=annotated_data$k}
+   found=find_annotation()
    found=found$annotated
    selectInput('Etiquette', 'Choose what to display when mouse on the nodes:',colnames(found$unique_add))
  })
+ 
+ output$Coloring <- renderUI({
+   found=find_annotation()
+   found=found$annotated
+   columns=c("<None>",colnames(found$unique_add))
+   selectInput('NetworkColor', 'Choose the variable for node coloring:',columns)
+ })
+ 
+ 
+ output$Coloring_nodes <- renderUI({
+   
+   found=find_annotation()
+   found=found$annotated
+   index=which(colnames(found$unique_add)==input$NetworkColor)
+   selected_vector=as.character(found$unique_add[,index])
+   modalities=unique(selected_vector)
+   selectInput('Modality', 'Choose which modality will be colored in red:',modalities)
+ })
+ 
  
  output$downloadNetwork<-downloadHandler(
    
    filename = function() {
      "edges.txt"},
    content = function(file) {
-     if(selected_ex$a==0){whole_network=load_network()}
-     else{whole_network=annotated_network$n}
+     whole_network=load_network()
      write.table(whole_network$edges, file,sep="\t",dec=",",row.names=F,col.names=T)}
  )
  
@@ -386,8 +389,7 @@ shinyServer(function(input, output) {
    filename = function() {
      "high-degree.txt"},
    content = function(file) {
-     if(selected_ex$a==0){whole_network=load_network()}
-     else{whole_network=annotated_network$n}
+     whole_network=load_network()
      if (!is.null(whole_network)){
        wp=which(find_cores()$labels==input$Cores)
        node_id=find_cores()$w_in[wp]
@@ -400,8 +402,7 @@ shinyServer(function(input, output) {
    filename = function() {
      "chain.txt"},
    content = function(file) {
-     if(selected_ex$a==0){whole_network=load_network()}
-     else{whole_network=annotated_network$n}
+     whole_network=load_network()
      if (!is.null(whole_network)){
        chains_list=find_chains()
        paths_list=chains_list$paths
@@ -412,7 +413,7 @@ shinyServer(function(input, output) {
  )
 
 output$Kegg_pathway <- renderUI({
-  selectInput('pathway', 'Choose your pathway:',kegg_paths[,2])
+  selectInput('pathway', 'Choose your pathway*:',kegg_paths[,2])
 })
 
 output$image<-renderUI({
@@ -425,8 +426,7 @@ output$image<-renderUI({
   code_path=paste0(organism,code_path)
   
   url=NULL
-  if(selected_ex$a==0){found=find_annotation()}
-  else{found=annotated_data$k}
+  found=find_annotation()
   tol2=found$tol2
   found=found$annotated
   raw_data=found$all
@@ -462,29 +462,6 @@ output$image<-renderUI({
   tags$img(src=url)
   })
   
-
-observeEvent(input$Example1,{ 
-    selected_ex$a=1
-    load("FT-annotation.Rdata")
-    load("FT-network.Rdata")
-    annotated_data$k=found
-    annotated_network$n=whole_network
-})
-
-observeEvent(input$Example2,{ 
-  selected_ex$a=2
-  load("LC-annotation.Rdata")
-  load("LC-network.Rdata")
-  annotated_data$k=found
-  annotated_network$n=whole_network
-})
-
-observeEvent(input$clearButton,{ 
-    selected_ex$a=0
-    annotated_data$k=list()
-    annotated_network$n=list()
-})
-
 })
 
 
