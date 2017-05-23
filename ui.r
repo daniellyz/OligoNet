@@ -28,19 +28,33 @@ shinyUI(navbarPage("OligoNet: Oligopeptides in Metabolomics Data",
   # Show network graph
 
     tabPanel("A) Start a run",
-     column(6,         
+     column(7,         
         br(),
         em('* means the information is compulsory'),
         br(),
-        h3("Upload metabolomics data (IDs + Mass signals+ Intensities)*"),
+        h3("Upload metabolomics data (File 1: IDs + Mass signals+ Intensities)*"),
+        div(style="display: inline-block;vertical-align:top; width: 200px;",h5("Please check the examples:")),
+        div(style="display: inline-block;vertical-align:top; width: 40px;",h5(a("Ex 1,",href = 'https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-FT-Pos.txt',target="_blank"))),
+        div(style="display: inline-block;vertical-align:top; width: 40px;",h5(a("Ex 2,",href = 'https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos.txt',target="_blank"))),
+        div(style="display: inline-block;vertical-align:top; width: 40px;",h5(a("Ex 3,",href = 'https://github.com/daniellyz/OligoNet/blob/master/Datasets/Wine_data.txt',target="_blank"))),
+        div(style="display: inline-block;vertical-align:top; width: 40px;",h5(a("Ex 4",href = 'https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Positive_Doping.txt',target="_blank"))),
+        
         fileInput('file1',label='',accept = c('.txt','.dat','.csv')),
         h4("or paste your data into the field below:"), 
         textAreaInput("blank_file1", label = '',width=500,height=200),
         br(),
-        h3("Upload metabolomics data (IDs + Other information)"),
+        
+        h3("Upload metabolomics data (File 2: IDs + Other information)"),
+        div(style="display: inline-block;vertical-align:top; width: 200px;",h5("Please check the examples:")),
+        div(style="display: inline-block;vertical-align:top; width: 40px;",h5(a("Ex 1,",href = 'https://github.com/daniellyz/OligoNet/blob/master/Datasets/Yeast-FT-Pos_additional.txt',target="_blank"))),
+        div(style="display: inline-block;vertical-align:top; width: 40px;",h5(a("Ex 2,",href = 'https://github.com/daniellyz/OligoNet/blob/master/Datasets/Yeast-LC-Pos-additional.txt',target="_blank"))),
+        div(style="display: inline-block;vertical-align:top; width: 40px;",h5(a("Ex 3",href = 'https://github.com/daniellyz/OligoNet/blob/master/Datasets/Wine_data_add.txt',target="_blank"))),
         fileInput('file2',label='',accept = c('.txt','.dat','.csv')),
         #https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt'
-        h3('Modify the default monomer (Amino acid) file'),
+       
+        h3('Modify the default monomer (File 3: Amino acids)'),
+        div(style="display: inline-block;vertical-align:top; width: 260px;",h5("Please check the default amino acid file:")),
+        div(style="display: inline-block;vertical-align:top; width: 80px;",h5(a("Amino acid",href = 'https://github.com/daniellyz/OligoNet/blob/master/amino-acid-basic.txt',target="_blank"))),
         fileInput('file3', label='',accept = c('.txt','.dat','.csv')),
         h3("Scan mode*:"),
         selectInput('Scan', label='',c('Neutral (input data is already corrected)','Positive ionization (correct for H+ adduct)','Negative ionization (correct for H+ loss)')),
@@ -141,7 +155,7 @@ shinyUI(navbarPage("OligoNet: Oligopeptides in Metabolomics Data",
         uiOutput("Kegg_pathway"),
         htmlOutput('image')),
       
-      tabPanel("Example datasets"),
+      tabPanel("Example datasets",includeMarkdown("Examples.Rmd")),
       tabPanel("Help",includeMarkdown("Help.Rmd")),
       tabPanel("About",includeMarkdown("About.Rmd"))
       )

@@ -21,7 +21,7 @@ kegg_organism=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/m
 kegg_cpds=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_cpds.txt",sep="\t",header=F,stringsAsFactors = F)
 kegg_paths=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/master/kegg_pathway.txt",sep="\t",header=F,stringsAsFactors = F)
 
-#deployApp(server="shinyapps.io",appName="OligoNet-V8")
+#deployApp(server="shinyapps.io",appName="OligoNet")
 
 #### Shiny ####
 shinyServer(function(input, output,clientData, session) {

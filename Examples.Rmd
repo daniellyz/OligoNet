@@ -1,0 +1,44 @@
+### Examples
+
+### Dataset 1: FT-ICR-MS-based yeast metabolic profiling data
+
+#### Samples: Fermented yeast culture
+#### Platform: 12 T Bruker solariX FT-ICR-MS
+#### Scan mode: Positive
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-FT-Pos.txt" target="_blank"> File 1 </a>: Neutral exact mass; Intensity in 45 samples
+#### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Yeast-FT-Pos_additional.txt" target="_blank"> File 2 </a>: Elemental formula annotations; 1=Biomarker
+#### <a href= "https://link.springer.com/article/10.1007/s11306-016-1001-1" target="_blank"> Reference </a>
+#### Contact: youzhong.liu@u-bourgogne.fr 
+
+### Dataset 2: UPLC-MS-based yeast metabolic profiling data
+
+#### Samples: Fermented yeast culture
+#### Platform: ACQUITIY UPLC + Synapt HDMS aoQTOF
+#### Separation mode: Reversed-phase
+#### Scan mode: Positive mode
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos.txt" target="_blank"> File 1 </a>: Neutral experimental mass (already corrected); Peak areas in 45 samples
+#### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Yeast-LC-Pos-additional.txt" target="_blank"> File 2 </a>: Retention times; 1=Biomarker
+#### <a href= "https://link.springer.com/article/10.1007/s11306-016-1001-1" target="_blank"> Reference </a>
+#### Contact: youzhong.liu@u-bourgogne.fr 
+
+### Dataset 3: UPLC-MS-based wine data
+
+#### Samples: Mixture of white wines
+#### Platform: Thermo UPLC + Bruker maXis II
+#### Separation mode: Reversed-phase
+#### Scan mode: Positive mode
+#### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Wine_data.txt" target="_blank"> File 1 </a>: Neutral experimental mass (already corrected); Peak areas in 10 replicate samples
+#### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Wine_data_add.txt" target="_blank"> File 2 </a>: Retention times
+#### Contact: florian.bahut@u-bourgogne.fr
+
+### Dataset 4: FT-ICR-MS-based urine metabolic profiling data
+
+#### Samples: Urine from athletes
+#### Platform: 12 T Bruker solariX FT-ICR-MS
+#### Scan mode: Positive
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Positive_Doping.txt" target="_blank"> File 1 </a>: Neutral experimental mass (already corrected); Intensity in all samples
+#### <a href= "http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0074584" target="_blank"> Reference </a>
+#### Contact: marianna.lucio@helmholtz-muenchen.de
+
+
+

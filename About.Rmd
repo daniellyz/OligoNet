@@ -6,7 +6,5 @@ Author Affiliation: UMR PAM Université de Bourgogne/Agrosup Dijon, Institut Uni
 
 You can find source code of this site <a href="https://github.com/daniellyz/OligoNet" target="_blank"> here</a>.
 
-All metabolomics data used for testing Oligonet can be found <a href="https://github.com/daniellyz/OligoNet/tree/master/Datasets" target="_blank"> here</a>.
-
 Powered by R Shiny.
 
