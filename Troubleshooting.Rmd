@@ -1,0 +1,38 @@
+### Troubleshooting
+
+
+### Problem 1: 
+
+#### Location: Tabpanel "A) Start a run"
+#### Error message: "Your data file must contain unique IDs!"
+#### Reason & Solution: OligoNet does not accept duplicated IDs. Please find these IDs in Excel and name them differently.
+
+### Problem 2: 
+
+#### Location: Tabpanel "A) Start a run"
+#### Error message: "The second column representing mass values must contain numeric values!"
+#### Reason & Solution: The default decimal mark in input files should be ".". If the decimal mark in your data is ",", then it will be not be considered as numeric but alphabetic. Please replace all "," in File 1 by "." in Excel
+
+### Problem 3:
+
+#### Location: Tabpanel "A) Start a run"
+#### Error message: "File 1 and File 2 must have identical ids"
+#### Reason & Solution: The two files must contain identical mass features, and they should be sorted in the same order. 
+
+### Problem 4:
+
+#### Location: Tabpanel "A) Start a run"
+#### Warning message: "Warning: at least 4 samples are needed to calculate a meaningful statistical correlation"
+#### Reason & Solution: In File 1 uploaded, if there are fewer than 6 columns, it means that you have fewer than 4 samples. This will not be a problem for mass annotation or network construction, but the correlation coefficients that will be calculated for network edges would not be valid
+
+### Problem 5:
+
+#### Location: Tabpanel "A) Start a run"
+#### Error message: "The decomposition failed, but you can try to submit the job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp."
+#### Reason & Solution: The reason for this error can be diverse: i) the third party server is under maintenance, user could run the decomposition inside OligoNet without using the external server (only recommended if you have fewer than 500 masses) by unchecking "Use DECOMP server"; ii) the third party server failed to perform decomposition because you have too big masses (e.g. >1500 Da) or too long mass list. You could split you data into subset and do the decomposition in batches. You could also try to perform the decomposition on http://bibiserv.techfak.uni-bielefeld.de/decomp according to our instruction and continue the analyses in OligoNet by putting job id. iii) Sometimes the DECOMP server does not execute new jobs probably because of site maintenance, but the older results can be displayed. So if your data has already been studied, you could try with its corresponding job id. 
+
+### Problem 6: 
+
+#### Location: Tabpanel "C) Network construction"
+#### Warning message:  "No network structure found in your data!"
+#### Reason & Solution: There's no network structure found in the data (e.g. if you have "S1R1", "L1R1" and "G1V1" as annotations, there's obviously no potential "degradation reactions" between them). At this stage, users could try to build the network with the same dataset but with less strict conditions, such as higher annotation error tolerance, or try to include isolated nodes, free amino acids and using less strict correlation filters.

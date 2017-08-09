@@ -1,30 +1,32 @@
 
 options(warn=-1)
 
+
 ##############################
 #Scripts for mass decomposition
 ##############################
 
 # The following function request the job from decomp server
 
-send_curl<-function(mass_list,monomers,tol,DecompID,dplace){
+send_curl<-function(mass_list,monomers,tol,DecompID){
   
   # Prepare Json style input & parameters:  
   
-  if (DecompID=="Job ID"){
+             
+  if ((DecompID=="Job ID") || (DecompID=="")){
     
     header="{ \"decomp_input_real_alphabet\":\"# monomer masses, monoisotopic distribution"
     
-    units=paste0("\\r\\n",monomers[,1]," ",round(monomers[,2],dplace),collapse="")
-    
+    units=paste0("\\r\\n",monomers[,1]," ",monomers[,2],collapse="")
+
     middle="\", \"decomp_input_real_masses\":\""
     
     masses=paste0(mass_list[1:(length(mass_list)-1)],"\\r\\n",collapse="")
     
     masses=paste0(masses,mass_list[length(mass_list)],collapse="")
     
-    ender="\", \"paramset\":{ \"decomp_masses_masserrorunit\":\"Da\", \"decomp_masses_massdistribution\":\"mono\", \"decomp_filtering_deviation\":\"true\", \"decomp_filtering_best\":\"20\", \"decomp_filtering_chemicallyplausible\":\"false\", \"decomp_masses_allowedmasserror\":\""
-    
+    ender="\", \"paramset\":{ \"decomp_masses_masserrorunit\":\"Da\", \"decomp_masses_massdistribution\":\"mono\", \"decomp_filtering_deviation\":\"true\", \"decomp_filtering_best\":\"2000000\", \"decomp_filtering_chemicallyplausible\":\"false\", \"decomp_masses_allowedmasserror\":\""
+      
     ender2=paste0(tol,"\"} }")
     
     input_str=paste0(header,units,middle,masses,ender,ender2,collapse="")
@@ -33,34 +35,48 @@ send_curl<-function(mass_list,monomers,tol,DecompID,dplace){
     
     #curl -X POST -d @[[INPUT]] http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/request -H "Content-Type: application/json"
     
+   # b1="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/request"
     b1="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/request"
-    p1=postForm(b1,.opts=list(postfields=input_str, httpheader="Content-Type: application/json",useragent = "RCurl"))
+    p1=try(postForm(b1,.opts=list(postfields=input_str, httpheader="Content-Type: application/json",useragent = "RCurl",timeout = 600)),silent=T)
+    #print(p1[1])
     
     # 2: Check status
+    
+    if (class(p1)=="try-error"){p3="No response from the server"}      
+    else{
     b2="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/statuscode"
     id=p1[1]
     ptm0 <- proc.time()
     p2="0"
     time_passed=0
     while (p2!="600" & time_passed<500){
-      p2=postForm(b2,.opts=list(postfields=id, httpheader="Content-Type: text/plain",useragent = "RCurl"))
+      p2=postForm(b2,.opts=list(postfields=id, httpheader="Content-Type: text/plain",useragent = "RCurl",timeout = 600))
       ptm1 <- proc.time()-ptm0  
-      time_passed=ptm1[3]
-    }
+      time_passed=ptm1[3]}
     
     # 3: Output
     
     #curl -X POST -d [[ID]] http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/response -H "Content-Type: text/plain";echo
-    if (p2=="600"){ # If the job is finished with success
+    
+    if (p2=="600"){ # If the job is finished with success 
       b3="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/response"
-      p3=postForm(b3,.opts=list(postfields=id, httpheader="Content-Type: text/plain",useragent = "RCurl"))
-    }
+      p3=try(postForm(b3,.opts=list(postfields=id, httpheader="Content-Type: text/plain",useragent = "RCurl",timeout = 600)),silent=T)}
+    
     if (p2!="600") {p3="No response from the server"}} # Send error message if Decomp faied to find the results
+    if (class(p3)=="try-error"){p3="No response from the server"}}      
   
+    
   else{
+    b2="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/statuscode"
     b3="http://bibiserv2.cebitec.uni-bielefeld.de:80/rest/decomp/decomp_decompose_reals/response"
     id=DecompID
-    p3=postForm(b3,.opts=list(postfields=DecompID, httpheader="Content-Type: text/plain",useragent = "RCurl"))
+    p2=postForm(b2,.opts=list(postfields=id, httpheader="Content-Type: text/plain",useragent = "RCurl",timeout = 600))
+    if (p2!="600") {p3="No response from the server"}
+    else{
+    p3=try(postForm(b3,.opts=list(postfields=DecompID, httpheader="Content-Type: text/plain",useragent = "RCurl",timeout = 600)),silent=T)
+    if (class(p3)=="try-error"){p3="No response from the server"}}
+    
+    
   }
   return(list(p3=p3,id=id))
 }
@@ -85,7 +101,7 @@ peptide_annotation<-function(raw_data,additional_data,results,tol,monomers,conde
   results=results[[1]][3:length(results[[1]])]
   
   for (i in 1:length(results)){
-    
+
     annotations=strsplit(results[i],"\n")
     annotations=annotations[[1]]
 
@@ -112,7 +128,7 @@ peptide_annotation<-function(raw_data,additional_data,results,tol,monomers,conde
         nb_peptide_annotated=c(nb_peptide_annotated,1)
         unique_peptide_annotated=c(unique_peptide_annotated,possible_list) # List of valid peptides with unique annotation
         unique_row=c(unique_row,i)
-        ppm_error=ppm_calc(possible_list,monomers,condensation,raw_data[i,2])
+        ppm_error=ppm_calc1(possible_list,monomers,condensation,raw_data[i,2])
         error_annotated=c(error_annotated,ppm_error)}
       
       else { # If multiple annotation possible
@@ -120,7 +136,7 @@ peptide_annotation<-function(raw_data,additional_data,results,tol,monomers,conde
         nb_peptide_annotated=c(nb_peptide_annotated,length(possible_list))
         error_list=c()
         for (t in 1:length(possible_list)){
-          ppm_error=ppm_calc(possible_list[t],monomers,condensation,raw_data[i,2])
+          ppm_error=ppm_calc1(possible_list[t],monomers,condensation,raw_data[i,2])
           error_list=c(error_list,ppm_error)}
         ppm_error=paste0(error_list,collapse=";")
         error_annotated=c(error_annotated,ppm_error)}
@@ -132,24 +148,35 @@ peptide_annotation<-function(raw_data,additional_data,results,tol,monomers,conde
     }
   }
       # If multiple possible annotations
- raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
- raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
- unique_data_annotated=raw_data[unique_row,]
- unique_data_additional=cbind(additional_data[unique_row,],Peptide=unique_peptide_annotated,PPM=error_annotated[unique_row])
 
+ raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated,stringsAsFactors=F)
+ raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated,stringsAsFactors=F)
+ unique_data_annotated=raw_data[unique_row,]
+ unique_data_additional=raw_data_additional[unique_row,]
+
+ is_unique=which(!duplicated(raw_data[,1]))
+ raw_data=raw_data[is_unique,]
+ raw_data_additional=raw_data_additional[is_unique,]
+ is_unique=which(!duplicated(unique_data_annotated[,1]))
+ unique_data_annotated=unique_data_annotated[is_unique,]
+ unique_data_additional=unique_data_additional[is_unique,]
+ 
+ if (is.vector(raw_data)){raw_data=matrix(raw_data,nrow=1,dimnames=list(NULL,names(raw_data)))}
+ if (is.vector(raw_data_additional)){raw_data_additional=matrix(raw_data_additional,nrow=1,dimnames=list(NULL,names(raw_data_additional)))}
+ if (is.vector(unique_data_annotated)){unique_data_annotated=matrix(unique_data_annotated,nrow=1,dimnames=list(NULL,names(unique_data_annotated)))}
+ if (is.vector(unique_data_additional)){unique_data_additional=matrix(unique_data_additional,nrow=1,dimnames=list(NULL,names(unique_data_additional)))}
+ 
  return(list(all=raw_data,all_add=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
 # Script for data annotation from recursive functinon:
 
 
-peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_data,tol,condensation){
+peptide_annotation_slow<-function(masslist,monomers,raw_data,additional_data,tol,condensation){
   
   peptide_annotated=c() # List of all peptide annotations (including no-annotation & duplex annotations)
   nb_peptide_annotated=c() # List of number of peptide annotations for each mass
   unique_row=c() # Selected row that represent an unique annotation of peptides
   error_annotated=c()
-  
-  monomers[,2]=round(monomers[,2],dplace)
   
   if (tol<1e-4) {appro_dplace=3}
   if ((tol>=1e-4) & (tol<=1e-1)) {appro_dplace=-round(log10(tol))}
@@ -163,6 +190,7 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
     mtry=c(masslist_arrondi[i]-1,masslist_arrondi[i],masslist_arrondi[i]+1) # Test different for rounding effect
     possible_combinations=c()
     for (mass in mtry){
+      print(mass)
       tmp=capture.output(pay(mass,monomers_arrondi,c()))
       if (length(tmp)>0){
         for (k in 1:length(tmp)){
@@ -183,7 +211,8 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
       for (r in 1:nrow(possible_combinations)){
         position=which(possible_combinations[r,]>0)
         peptide=paste(paste0(monomers[position,1],possible_combinations[r,position]),collapse="")
-        ppm_error=ppm_calc(peptide,monomers,condensation,raw_data[i,2])
+        ppm_error=ppm_calc1(peptide,monomers,condensation,raw_data[i,2])
+        print(ppm_error)
         possible_peptides=c(possible_peptides,peptide)
         error_list=c(error_list,ppm_error)}
       
@@ -204,11 +233,23 @@ peptide_annotation_slow<-function(masslist,dplace,monomers,raw_data,additional_d
     nb_peptide_annotated=c(nb_peptide_annotated,0)
     error_annotated=c(error_annotated,"NA")}}
 
-   raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
-   raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated)
+   raw_data=cbind(raw_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated,stringsAsFactors=F)
+   raw_data_additional=cbind(additional_data,NBP=nb_peptide_annotated,Peptide=peptide_annotated,PPM=error_annotated,stringsAsFactors=F)
    unique_data_annotated=raw_data[unique_row,]
-   unique_data_additional=cbind(additional_data[unique_row,],Peptide=peptide_annotated[unique_row],PPM=error_annotated[unique_row])
+   unique_data_additional=raw_data_additional[unique_row,]
   
+   is_unique=which(!duplicated(raw_data[,1]))
+   raw_data=raw_data[is_unique,]
+   raw_data_additional=raw_data_additional[is_unique,]
+   is_unique=which(!duplicated(unique_data_annotated[,1]))
+   unique_data_annotated=unique_data_annotated[is_unique,]
+   unique_data_additional=unique_data_additional[is_unique,]
+   
+   if (is.vector(raw_data)){raw_data=matrix(raw_data,nrow=1,dimnames=list(NULL,names(raw_data)))}
+   if (is.vector(raw_data_additional)){raw_data_additional=matrix(raw_data_additional,nrow=1,dimnames=list(NULL,names(raw_data_additional)))}
+   if (is.vector(unique_data_annotated)){unique_data_annotated=matrix(unique_data_annotated,nrow=1,dimnames=list(NULL,names(unique_data_annotated)))}
+   if (is.vector(unique_data_additional)){unique_data_additional=matrix(unique_data_additional,nrow=1,dimnames=list(NULL,names(unique_data_additional)))}
+   
    return(list(all=raw_data,all_add=raw_data_additional,unique=unique_data_annotated,unique_add=unique_data_additional))}
 
 # Recursive function:

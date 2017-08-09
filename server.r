@@ -1,7 +1,10 @@
 library(shiny)
+library("V8")
+library(shinyjs)
 options(warn=-1)
-options(shiny.maxRequestSize=30*1024^2)
+options(shiny.maxRequestSize=60*1024^2)
 library(igraph)
+library(Hmisc)
 library(KEGGREST)
 require(visNetwork, quietly = TRUE)
 require(stringr,  quietly = TRUE)
@@ -9,9 +12,9 @@ require(RCurl, quietly = TRUE)
 require(DT, quietly = TRUE) 
 #session$allowReconnect(TRUE)
 
-#bibiserv2_2016-11-28_145427_MrRdE
-#bibiserv2_2016-12-03_191118_7X2uK  # Without sugar/glutamine/asparagine
-#bibiserv2_2016-12-05_161538_XtQxM # LC data 
+#bibiserv2_2017-08-02_104105_jXVW5 # FT
+#bibiserv2_2017-08-05_173101_ML09G # Wine LC
+#bibiserv2_2017-08-02_152523_pr1kF # LC
 
 source('script1.r')
 source('script2.r')
@@ -26,14 +29,12 @@ kegg_paths=read.table("https://raw.githubusercontent.com/daniellyz/OligoNet/mast
 #### Shiny ####
 shinyServer(function(input, output,clientData, session) {
   
-  mms<-reactiveValues(k=character())
-  
-  monomers<-reactive({
+monomers<-reactive({
   
     inFile3=input$file3
      
     if (is.null(inFile3)){
-      monomers=read.csv('https://raw.githubusercontent.com/daniellyz/OligoNet/master/amino-acid-basic.txt',sep='\t',dec='.',header=F,stringsAsFactors = F)}
+      monomers=read.csv('https://raw.githubusercontent.com/daniellyz/OligoNet/master/amino-acid-complete.txt',sep='\t',dec='.',header=F,stringsAsFactors = F)}
     else{monomers=read.csv(inFile3$datapath,sep='',dec='.',header=F,stringsAsFactors = F)}
     
     condensation=monomers[1,2]
@@ -49,20 +50,24 @@ shinyServer(function(input, output,clientData, session) {
     list(tab=monomers,elements=elements,condensation=condensation)
   })
   
-  find_annotation <- eventReactive(input$goButton,{
-
+  
+check_annotation <-eventReactive(input$goButton,{
+  
     annotated=NULL
     raw_data=NULL
     additional_data=NULL
     dplace=NULL
     tol2=NULL
-    input_str_matrix=NULL
-    
+    mms=NULL
+    valid=0 # If the data format is valid
+      
     inFile1=input$file1
     inFile2=input$file2
-
+    
+    if ((is.null(inFile1)) && (input$blank_file1=="")){mms="Please load File 1!"}
+    
     if (!is.null(inFile1)){ # Check file 1
-      raw_data=data.matrix(read.table(inFile1$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))}
+      raw_data=read.csv(inFile1$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F)}
     
     if ((is.null(inFile1)) && (input$blank_file1!="")){ # Read from the blank area instead
       input_str=input$blank_file1
@@ -73,113 +78,177 @@ shinyServer(function(input, output,clientData, session) {
       raw_data=sapply(input_str[2:length(input_str)],function(x) strsplit(x,"\t"))
       raw_data=do.call(rbind,raw_data)
       rownames(raw_data)=NULL
-      raw_data=apply(raw_data,2,as.numeric)
+      if (nrow(raw_data)>1){
+        I_data=apply(raw_data[,2:ncol(raw_data)],2,as.numeric)
+        raw_data=data.frame(raw_data[,1],I_data,stringsAsFactors = F)}
+      else{
+        I_data=matrix(as.numeric(raw_data[,2:ncol(raw_data)]),nrow=1)
+        raw_data=data.frame(raw_data[,1],I_data,stringsAsFactors = F)}
       colnames(raw_data)=header
     }
     
     if (!is.null(inFile2)){ # Check file 2
-    additional_data=data.matrix(read.table(inFile2$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F))}
-     
+      additional_data=read.csv(inFile2$datapath,sep='\t',dec=".",header=T,stringsAsFactors = F)}
+    
     if (!is.null(raw_data) && is.null(additional_data)){
-    additional_data=raw_data}  # Default value for second file
+      additional_data=raw_data}  # Default value for second file
     
     if (!is.null(raw_data) && !is.null(additional_data)){ # Start parameter checking
-      
-      output_message1=c("Check input data format and parameters...")  # Output messages for users
-      
-      if (ncol(raw_data)<3){
-        output_message1=c(output_message1,"File 1 format not valid")
+     
+      if (ncol(raw_data)<3 || nrow(raw_data)<1){
+        mms="File 1 must contain at least three columns and one row!"
         raw_data=addional_data=annotated=NULL}
       
-      if (!(all(raw_data[,2]>0 & raw_data[,2]<10000))){
-        output_message1=c(output_message1,"File 1 format not valid")
+      if (length(unique(raw_data[,1]))<length(raw_data[,1])){
+        mms="Your data file must contain unique IDs!"
         raw_data=addional_data=annotated=NULL}
       
-      if (!identical(raw_data[,1],additional_data[,1])){
-        output_message1=c(output_message1,"File 1 and File 2 must have identical ids")
+      if (!all.is.numeric(raw_data[,2])){
+        mms="The second column representing mass values must contain numeric values!"
         raw_data=addional_data=annotated=NULL}
       
+      if (!(all(raw_data[,2]>0 & raw_data[,2]<5000))){
+        mms="Mass should be between 0 and 5000"
+        raw_data=addional_data=annotated=NULL}
+  
       if (nrow(monomers()$tab)<2){
-        output_message1=c(output_message1,"Not enough subunits for decomposition")
+        mms="Not enough subunits for decomposition"
         raw_data=addional_data=annotated=NULL}
-      
+        
       if (!(input$tol>=0 & input$tol<1)){
-        output_message1=c(output_message1,"Mass error must between 0 and 1 Da")
-        raw_data=addional_data=annotated=NULL} 
-      
-      if ((ncol(raw_data)<12) && (ncol(raw_data)>=3)){
-        output_message1=c(output_message1,"Warning: At least 10 samples are needed to calculate correlations between nodes")}
-    
-    output_message1=cat(paste0(output_message1,collapse="\n"))
-    mms$k=output_message1
-}
+        mms="Mass error must between 0 and 1 Da"
+        raw_data=addional_data=annotated=NULL}
+    } 
+    if (!is.null(raw_data) && !is.null(additional_data)){
+      if (!identical(raw_data[,1],additional_data[,1])){
+        mms="File 1 and File 2 must have identical ids"
+        raw_data=addional_data=annotated=NULL}
+      else{
+      mms="File format valid!"
+      valid=1
+      }}
+    list(raw_data=raw_data,additional_data=additional_data,message=mms,valid=valid)
+  })
+  
+  
+find_annotation <- eventReactive(input$goButton,{
+
+    raw_data=check_annotation()$raw_data
+    additional_data=check_annotation()$additional_data
+    annotated=NULL
+    dplace=NULL
+    tol2=NULL
+    mms=""
+
     if (!is.null(raw_data) && !is.null(additional_data)){ # If everything is fine we proceed 
       
-      mms$k="Input format is valid. Start mass decomposition... "
-
-      if (ncol(raw_data)==3){raw_data=cbind(raw_data,III=rep(20,nrow(raw_data)))}
-      
-      dplace_raw_data=decimalnumcount(as.character(raw_data[2,2])) # decimal place
+      if ((ncol(raw_data)<6) && (ncol(raw_data)>=3)){
+        mms="Warning: at least 4 samples are needed to calculate a meaningful statistical correlation"}
+  
+      if (as.numeric(raw_data[1,2])==round(as.numeric(raw_data[1,2]))){dplace=0} # integer
+      else{
+      dplace_raw_data=decimalnumcount(as.character(raw_data[1,2])) # decimal place
       dplace_monomers=decimalnumcount(as.character(monomers()$tab[2,2]))
       dplace=min(dplace_raw_data,dplace_monomers) # decimal place taken for rounding
-
-      if (input$Scan==2) {raw_data[,2]=raw_data[,2]-1.00737}
-      if (input$Scan==3) {raw_data[,2]=raw_data[,2]+1.00737}
+      }  
+      
+      if (input$Scan=='Positive ionization (correct for H+ adduct)') {raw_data[,2]=raw_data[,2]-1.007276}
+      if (input$Scan=='Negative ionization (correct for H+ loss)') {raw_data[,2]=raw_data[,2]+1.007276}
       
       mass_list=round(raw_data[,2]-monomers()$condensation,dplace)
-      
-      tol1=0.01 # Default tolerance for Decomp (Theoritical)
-      
-      tol2=input$tol
-      
-      if (tol2==0){tol2=0.00001} # Default tolerance for filtering (Theoritical-Computational error)
 
+      tol=input$tol # Tolerance 
+      
+        if (tol==0){
+         if (dplace==0){tol=1}
+        else{tol=10^(-dplace+1)}} # Default theoritical-computational error
+      # 
+      # if (dplace==0){tol=tol+1}
+      # else {tol=tol+10^(-dplace+1)}
+      
+      monomers=monomers()$tab
+      monomers[,2]=round(monomers[,2],dplace)
+      condensation=monomers()$condensation
+      condensation=round(condensation,dplace)
+      
       if (input$checkbox){# Use DECOMP server
       
-        results=send_curl(mass_list,monomers()$tab,tol1,input$DecompID,dplace) # bielefeld results
+        results=send_curl(mass_list,monomers,tol,input$DecompID) # bielefeld results
       
         if (results$p3=="No response from the server"){ # If no output from the server
             annotated=NULL
-            mms$k="The decomposition failed, but you can submit the job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp"
+            mms="The decomposition failed, but you can try to submit the job manually at http://bibiserv.techfak.uni-bielefeld.de/decomp.
+            If your data has already been studied, you could try with its corresponding job id. Otherwise, you could
+            run the job without using the DECOMP server (only recommended if you have fewer than 500 masses)"
           }
         
         else { # If everything OK
-            mms$k="Decomposition succeeded! Please check the results on the next tabpanel!"
-            #output_message=c(output_message,paste0("You Job id on DECOMP server is: ",results$id))
-            annotated=peptide_annotation(raw_data,additional_data,results$p3,tol2,monomers()$tab,monomers()$condensation)}}
+          mms="Decomposition succeeded! Please check the results on the next tab-panel! Your job id is: "
+          mms=paste0(mms,results$id,", you could enter this id if you want to re-run your data.")
+          annotated=peptide_annotation(raw_data,additional_data,results$p3,tol,monomers,condensation)
+          }}
       
       else { # Not use DECOMP server 
-        annotated=peptide_annotation_slow(mass_list,dplace,monomers()$tab,raw_data,additional_data,tol2,monomers()$condensation)       
-        mms$k="Decomposition succeeded! Please check the results on the next tabpanel!"
+        annotated=peptide_annotation_slow(mass_list,monomers,raw_data,additional_data,tol,condensation)       
+        mms="Decomposition succeeded! Please check the results on the next tab-panel!"
         }
   }
- list(annotated=annotated,raw_data=raw_data,dplace=dplace,tol2=tol2)
+ list(annotated=annotated,raw_data=raw_data,dplace=dplace,tol2=tol,message=mms)
   })
   
-  observe({
-    mms$k
-    if (length(mms$k)>0){
-    
-    output$blank_message1<-renderPrint(mms$k)}
- 
- 
-  })
+observeEvent(input$goButton,{
 
- output$table1 <- renderDataTable({
+  withProgress({
+    setProgress(message="Check data format...")
+    Sys.sleep(1)
+    setProgress(message=check_annotation()$message)
+    Sys.sleep(1)
+    if (check_annotation()$v==1){
+      setProgress(message="Decomposition started...")
+      Sys.sleep(1)
+      setProgress(message=find_annotation()$message)
+    }
+  })
+  if (check_annotation()$v==1){
+  output$blank_message1<-renderText({find_annotation()$message})}      
+  if (check_annotation()$v==0){
+    updateActionButton(session, "goButton",label = "Try again!")
+    output$blank_message1<-renderText({check_annotation()$message})
+  }
+})
+
+observeEvent(input$killButton,{shinyjs::js$refresh()})
+
+output$table1 <- renderDataTable({
     
+  withProgress({
+    setProgress(message="Generating annotation results...")
+    Sys.sleep(1)
     found=find_annotation()
     
     tol2=found$tol2
     found=found$annotated
+    
+    if (nrow(found$unique)==0){UAAC=NULL}
+    
+    if (nrow(found$unique)>1){
+     UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"],Error_ppm=found$unique[,"PPM"])}
 
-    UAAC=cbind(found$unique[,1:2],Peptide=found$unique[,"Peptide"],Error_ppm=found$unique[,"PPM"])
-
-    UAAC=datatable(UAAC,escape=c(TRUE,TRUE,TRUE,TRUE))
+    if (nrow(found$unique)==1){
+       UAAC=c(found$unique[,1:2],found$unique[,"Peptide"],found$unique[,"PPM"])   
+       UAAC=matrix(UAAC,nrow=1,dimnames=list(NULL,c("ID","Mass","Peptide","Error_ppm")))}
+    
+    UAAC=datatable(UAAC,escape=c(TRUE,TRUE,TRUE,TRUE), rownames = F)
 
     return(UAAC)
   })
+  })
   
-  output$table2 <- renderDataTable({
+output$table2 <- renderDataTable({
+  
+  withProgress({
+    setProgress(message="Generating annotation results...")
+    Sys.sleep(1)
   
     found=find_annotation()
     
@@ -189,141 +258,414 @@ shinyServer(function(input, output,clientData, session) {
     valid=found$all[,"NBP"]>1
     
     doubled=found$all[valid,]
-    MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"],Error_ppm=doubled[,"PPM"])
     
-    MAAP=datatable(MAAP,escape=c(TRUE,TRUE,TRUE,TRUE,TRUE))
+    if (nrow(doubled)==0){MAAP=NULL}
+  
+    if (nrow(doubled)>1){
+    MAAP=cbind(doubled[,1:2],Peptide=doubled[,"Peptide"],NBP=doubled[,"NBP"],Error_ppm=doubled[,"PPM"])}
+    
+    if (nrow(doubled)==1){
+      MAAP=c(doubled[,1:2],doubled[,"Peptide"],doubled[,"NBP"],doubled[,"PPM"])   
+      MAAP=matrix(MAAP,nrow=1,dimnames=list(NULL,c("ID","Mass","Peptide","NBP","Error_ppm")))}
+    
+    MAAP=datatable(MAAP,escape=c(TRUE,TRUE,TRUE,TRUE,TRUE), rownames = F)
     return(MAAP)})
-  
-  load_network <- eventReactive(input$goButtonbis,{
-    
-      found=find_annotation()
-      found=found$annotated
-      
-      cor_min=-1
-      
-      delete_triangle=0
-      
-      if ("4" %in% input$visual2){
-        cor_min=input$cor_min_max[1]
-        cor_max=input$cor_min_max[2]
-        }
-      if ("2" %in% input$visual){delete_triangle=1}
-      
-      index=which(colnames(found$unique_add)==input$Etiquette)
-      
-      index2=which(colnames(found$unique_add)==input$NetworkColor)
-      selected_vector=as.character(found$unique_add[,index2])
-      index_modality=which(selected_vector==input$Modality) # Which nodes will be colored in red
-      col_list=rep("blue",nrow(found$unique_add))
-      col_list[index_modality]="red"
-      
-      network=network_generator(found$unique,found$unique_add,cor_min,cor_max,index,col_list,monomers()$elements,delete_triangle)
-      
-      if ("3" %in% input$visual){ # remove amino acids in the example files
-        network=filter_amino_acid(network,monomers()$elements)}
-      network
-      
-      })
-  
-  output$networkPlot <- renderVisNetwork({
-
-    choose_to_show="1" %in% input$visual
-    whole_network=load_network()
-    
-   #save(whole_network,file="FT-network.Rdata")
-    if (!is.null(whole_network) && choose_to_show){
-      visNetwork(whole_network$nodes, whole_network$links)}
-  })
-  
-  output$Distribution_degree<-renderPlot({
-    whole_network=load_network()
-    deg_in <- degree(whole_network$g, mode="all")
-    deg_in=deg_in[which(deg_in>=1)]
-    plot(rank(-deg_in),as.numeric(deg_in),xlab="Rank",ylab="Degree")
 })
   
-  output$Distribution_edge<-renderPlot({
-    whole_network=load_network()
-    count_diff=table(whole_network$diff_list)
-    plot(rank(-count_diff),as.numeric(count_diff),xlab="Rank",ylab="Occurences")
-})  
+observeEvent(input$goButtonbis ,{
+
+  withProgress({
+  found=find_annotation()
+  found=found$annotated
+  found_unique=found$unique
   
-  output$Top_edge<-renderPlot({
-    whole_network=load_network()
-    count_diff=table(whole_network$diff_list)
-    count_diff=sort(count_diff,decreasing = T)
-    most_rank=ceiling(length(count_diff)*0.2)
-    barplot(count_diff[1:most_rank],ylab="Number of edges")
-  })  
-  
-  output$Distribution_correlation<-renderPlot({
-    whole_network=load_network()
-    hist(whole_network$cor,xlab="Spearman correlation coefficient",ylab="Frequency",main="")
-})  
-  
-  output$Distribution_length<-renderPlot({
-    whole_network=load_network()
-    g=whole_network$g
-    nodes=whole_network$nodes
-    dl=c()
-    for (n in 1:(nrow(nodes)-1)){
-      for (m in ((n+1):nrow(nodes))){
-        checked_nodes=try(all_simple_paths(g,from=nodes[m,1],to=nodes[n,1]),silent=T)
-        if ((length(checked_nodes)>0) & (class(checked_nodes)!="try-error")){
-          dl=c(dl,sapply(checked_nodes,length))}
-      }
-    }
-    barplot(table(dl-1),xlab="Path length between nodes",ylab="Frequency")
-  })  
-  
-  find_cores<-reactive({
-    whole_network=load_network()
-    deg_in <- degree(whole_network$g, mode="in")
-    #print(deg_in)
-    w_in=which(deg_in>4)
-    rw=match(w_in,whole_network$nodes$id)
-    labels=whole_network$nodes$label[rw]
-    list(labels=labels,w_in=w_in)
-  })
-  
-  find_chains<-reactive({
-    whole_network=load_network()
-    all_chains=degrade_chain_all(whole_network,3)
-    all_chains
-  })
+  if (!is.null(found_unique)){ 
+    if (nrow(found$unique)<2){
+        setProgress(message="At least 2 UAAC signals required for network construction...")}
+    else{
+      setProgress(message="Start network construction...")
+      whole_network=load_network()
+      save(whole_network,file="FT-modified.rdata")
+      Sys.sleep(1)
+      if (length(whole_network$cor)==0){
+        setProgress(message="No network structure found in your data!")}
+      else{
+        setProgress(message="Network construction succeeded!")
+      }}}
+  Sys.sleep(1)
+  setProgress(message="Generating edge table...")
+  Sys.sleep(1)
+ })
+ if (is.null(found_unique)){
+    output$blank_message2<-renderText("Please start the run first in tab-panel A)")}  
+ else{
+  if (nrow(found$unique)<2){
+    output$blank_message2<-renderText("At least 2 UAAC signals required for network construction...")}      
+  else{
+    if (length(whole_network$cor)==0){
+      output$blank_message2<-renderText("No network structure found in your data!")}
+    else{
+     output$blank_message2<-renderText("Network construction succeeded! You can check and download the network file below for visualization in Gephi/Cytoscape, or go to the next tab-panel to visualize or analyze the network!")
+     
+     N1=length(whole_network$nodes$id)
+     N2=length(whole_network$cor)
+     m1=paste("<b>","Summary of the network:","</b>")
+     m2=paste0("Your network contains ",N1," nodes and ",N2," edges.")
+     if (ncol(found$unique)<9){m3="Statistical correlation might not be meaningful since you have fewer than 4 samples!"}
+     else{m3=""}
+     m4="List of edges in your network:"
+     output$network_summary=renderUI({HTML(paste(m1,m2,m3,m4,sep="<br/>"))})
+     #random_edges=sample(1:nrow(whole_network$edges),10)
+     
+     EDGES=whole_network$edges
+     EDGES=datatable(EDGES,escape=c(TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE))
+     output$table3 <- renderDataTable({EDGES})
+    }}}
+})
+
+observeEvent(input$clearButton,{
+  output$network_summary<-renderUI({HTML(NULL)})
+  output$blank_message2<-renderText("")
+  output$table3<-renderDataTable(NULL)
+  output$networkPlot <- renderVisNetwork(NULL)
+  output$Distribution_degree<-renderPlot(NULL)
+  output$Distribution_edge<-renderPlot(NULL)
+  output$Top_edge<-renderPlot(NULL)
+  output$Distribution_correlation<-renderPlot(NULL)
+  output$Distribution_length<-renderPlot(NULL)
+ # output$networkPlot1 <- renderVisNetwork(NULL)
+  output$Controls <- renderUI(NULL)
+  output$Chains <- renderUI(NULL)
+#  output$networkPlot3 <- renderVisNetwork(NULL)
+})
+
+load_network <- eventReactive(input$goButtonbis,{
+  output$network_summary<-renderUI({HTML(NULL)})
+  output$blank_message2<-renderText("")
+  output$table3<-renderDataTable(NULL)
+  output$networkPlot <- renderVisNetwork(NULL)
+  output$Distribution_degree<-renderPlot(NULL)
+  output$Distribution_edge<-renderPlot(NULL)
+  output$Top_edge<-renderPlot(NULL)
+  output$Distribution_correlation<-renderPlot(NULL)
+  output$Distribution_length<-renderPlot(NULL)
+#  output$networkPlot1 <- renderVisNetwork(NULL)
+  output$Controls <- renderUI(NULL)
+  output$Chains <- renderUI(NULL)
+#  output$networkPlot3 <- renderVisNetwork(NULL)  
     
-  output$networkPlot1 <- renderVisNetwork({
+  found=find_annotation()
+  found=found$annotated
+  network=NULL
+    
+  # if (!all.is.numeric(found$unique[,1])){
+  #   found$unique[,1]=1:nrow(found$unique)
+  #   found$unique_add[,1]=1:nrow(found$unique) # Replace by numeric
+  # }
+  
+  
+  if (nrow(found$unique)>1){
+    cor_min=-100
+    cor_max=100
+      
+    delete_triangle=0
+    isolated=0
+    filter_aa=0
+    
+    if ("4" %in% input$visual2){
+      cor_min=input$cor_min_max[1]
+      cor_max=input$cor_min_max[2]}
+    
+    if ("2" %in% input$visual){delete_triangle=1}
+    if ("1" %in% input$visual){isolated=1}
+    if ("3" %in% input$visual){filter_aa=1}
+
+    #network_generator<-function(unique,unique_add,cor_min,cor_max,elements,delete_triangle,isolated){
+      
+    network=network_generator(found$unique,found$unique_add,cor_min,cor_max,monomers()$elements,delete_triangle,isolated,filter_aa)
+    }
+    network
+})
+
+
+output$Shows1 <- renderUI({
+  names_list=NULL
+  found=find_annotation()
+  found=found$annotated
+  if (!is.null(found)){
+    names_list=unique(c(colnames(found$unique),colnames(found$unique_add)))}
+  names_list=c("Peptide",names_list)
+  selectInput('Display', 'Feature displayed next to each node:',names_list)
+})
+
+output$Shows2 <- renderUI({
+  names_list=NULL
+  found=find_annotation()
+  found=found$annotated
+  if (!is.null(found)){
+    names_list=unique(c(colnames(found$unique),colnames(found$unique_add)))}
+  names_list=c("<None>",names_list)
+  selectInput('Etiquette', 'Feature displayed when mouse over nodes:',names_list)
+})
+
+output$Shows3 <- renderUI({
+  names_list=NULL
+  found=find_annotation()
+  found=found$annotated
+  if (!is.null(found)){
+    names_list=unique(c(colnames(found$unique),colnames(found$unique_add)))}
+  names_list=c("<None>",names_list)
+  selectInput('NetworkColor', 'Feature used for node coloring:',names_list)
+})
+
+output$Color_type <- renderUI({
+  
+  names_list=NULL
+  found=find_annotation()
+  whole_network=load_network()
+  
+  found=found$annotated
+  found=cbind(found$unique,found$unique_add)
+  found=found[whole_network$matched,]
+
+  index2=which(colnames(found)==input$NetworkColor)[1]
+  if (!is.na(index2)){
+  variable_to_color=found[,index2]
+  variable2=unique(variable_to_color)
+  
+  if (length(variable2)>1){
+    if (!all.is.numeric(c(variable2))){
+      names_list=c()
+      for (i in 1:length(variable2)){
+        names=paste0("Color the group ",variable2[i]," red")
+        names_list=c(names_list,names)}}
+    else{
+      names_list="Default coloring: quantitaive values"
+      if (length(variable2)<6){
+        for (i in 1:length(variable2)){
+          names=paste0("Color the group ",variable2[i]," red")
+          names_list=c(names_list,names)}}  }}}
+  selectInput('Modality', 'Type of node coloring:',names_list)
+})
+
+network_modifier <- reactive({
+
     whole_network=load_network()
     if (!is.null(whole_network)){
-      chains_list=find_chains()
-      paths_list=chains_list$paths
-      wp=which(chains_list$start_labels==input$Start)
-      if (length(wp)>0){
-        path=paths_list[[wp]]
-        chains=generate_degrade_chain(whole_network,path)
-        visNetwork(chains$nodes, chains$links)}}
-    })
+    
+    found=find_annotation()
+    
+    found=found$annotated
+    found=cbind(found$unique,found$unique_add)
+    ranked=order(found[,2])
+    found=found[ranked,]
+    found=found[whole_network$matched,]
   
- output$Controls <- renderUI({
-    selectInput('Cores', 'Choose cores:',find_cores()$labels)
-  })
- 
- output$Chains <- renderUI({
-   found_chains=find_chains()
-   selectInput('Start', 'Choose chain that starts with:',found_chains$start_labels)
- })
+    index0=which(colnames(found)==input$Display)[1]
+    index1=which(colnames(found)==input$Etiquette)[1]
+    index2=which(colnames(found)==input$NetworkColor)[1]
+    
+    if (!is.na(index0)){whole_network$nodes$label <- found[,index0]}
+    if (!is.na(index1)){whole_network$nodes$title <- found[,index1]}
+    else{whole_network$nodes$title<-NA}
+  
+    col_list=rep("blue",nrow(found))
+    if (!is.na(index2)){
+    variable_to_color=found[,index2]
+    variable2=unique(variable_to_color)
+    
+    if (length(variable2)>1){
+      if (!all.is.numeric(c(variable2))){
+        names_list=c()
+        for (i in 1:length(variable2)){
+          names=paste0("Color the group ",variable2[i]," red")
+          names_list=c(names_list,names)}}
+      else{
+        names_list="Default coloring: quantitaive values"
+        if (length(variable2)<6){
+          for (i in 1:length(variable2)){
+            names=paste0("Color the group ",variable2[i]," red")
+            names_list=c(names_list,names)}}}
+      
+    w=which(names_list==input$Modality)
+    if (names_list[w]=="Default coloring: quantitaive values"){
+      variable_to_color=rank(as.numeric(variable_to_color),ties.method="first")
+      colfunc <- colorRampPalette(c("lightblue", "darkblue"))
+      color_levels=colfunc(max(variable_to_color)) 
+      col_list=color_levels[variable_to_color]}
+    else{
+      #if (all.is.numeric(c(variable2))){w=w-1} # Quatitative values
+      var=variable2[w-1]
+      group_selected=which(variable_to_color==var)
+      col_list[group_selected]="red"}}}
+    
+    whole_network$nodes$color.background=col_list
+    
+    ee=c("Amino acid(s) loss","Statistical correlation","Edge IDs")
+    if (input$Edge_Etiquette==ee[2]){whole_network$links$title=whole_network$edges[,7]}
+    if (input$Edge_Etiquette==ee[3]){whole_network$links$title=whole_network$edges[,1]}}
+    
+    whole_network
+})
 
- output$networkPlot3 <- renderVisNetwork({
-   whole_network=load_network()
+observeEvent(input$goButton3,{
+  withProgress({
+   setProgress(message="Generate the entire network...")
+   Sys.sleep(1)
+   whole_network=network_modifier()
    if (!is.null(whole_network)){
-    wp=which(find_cores()$labels==input$Cores)
+    output$networkPlot<- renderVisNetwork({visNetwork(whole_network$nodes, whole_network$links)})
+  }
+   setProgress(message="The network will soon show up in your browser...")
+   Sys.sleep(1)
+   setProgress(message="Please be patient! This can be long depending on your browser.")
+   Sys.sleep(5)
+  })
+})
+
+observeEvent(input$goButton4,{
+  withProgress({
+  setProgress(message="Analyzing global network topology...")
+  Sys.sleep(2)
+    
+  whole_network=load_network()
+
+  deg_in <- degree(whole_network$g, mode="all")
+  deg_in=deg_in[which(deg_in>=1)]
+  output$Distribution_degree<-renderPlot({plot(rank(-deg_in),as.numeric(deg_in),xlab="Rank",ylab="Degree")})
+  
+  count_diff=table(whole_network$diff_list)
+  output$Distribution_edge<-renderPlot({plot(rank(-count_diff),as.numeric(count_diff),xlab="Rank",ylab="Occurences")})
+  
+  count_diff=sort(count_diff,decreasing = T)
+  most_rank=ceiling(length(count_diff)*0.2)
+  output$Top_edge<-renderPlot({barplot(count_diff[1:most_rank],ylab="Number of edges")})  
+  
+  setProgress(message="Analyzing statistical properties...")
+  Sys.sleep(2)
+  output$Distribution_correlation<-renderPlot({hist(as.numeric(whole_network$cor),xlab="Spearman correlation coefficient",ylab="Frequency",main="")})
+  
+  setProgress(message="Analyzing path lengths in the network...")
+  g=whole_network$g
+  nodes=whole_network$nodes
+  dl=c()
+  for (n in 1:(nrow(nodes)-1)){
+    for (m in ((n+1):nrow(nodes))){
+      checked_nodes=try(all_simple_paths(g,from=nodes[m,1],to=nodes[n,1]),silent=T)
+      if ((length(checked_nodes)>0) & (class(checked_nodes)!="try-error")){
+        dl=c(dl,sapply(checked_nodes,length))}
+    }
+  }
+  output$Distribution_length<-renderPlot({barplot(table(dl-1),xlab="Path length between nodes",ylab="Frequency")}) 
+  
+  setProgress(message="Network analysis succeeded!")
+  Sys.sleep(1)})
+  
+})
+
+observeEvent(input$goButton5,{
+  
+  withProgress({
+  whole_network0=load_network()
+  if (!is.null(whole_network0)){
+    setProgress(message="Looking for high degree nodes in the network...")
+    Sys.sleep(1)
+    deg_in <- degree(whole_network0$g, mode="in")
+    w_in=which(deg_in>4)
+    rw=match(names(w_in),whole_network0$nodes$id)
+    labels=whole_network0$nodes$label[rw]
+    output$Controls <- renderUI({selectInput('Cores', 'Choose center nodes:',labels)})}
+  if (length(labels)==0){
+    setProgress(message="No nodes in the network have a degree >4 !")
+    Sys.sleep(1)}
+  })
+})
+
+output$networkPlot3 <- renderVisNetwork({
+  whole_network0=load_network()
+  if (!is.null(whole_network0)){
+    deg_in <- degree(whole_network0$g, mode="in")
+    w_in=which(deg_in>4)
+    rw=match(names(w_in),whole_network0$nodes$id)
+    labels=whole_network0$nodes$label[rw]
+    wp=which(labels==input$Cores)
     if (length(wp)>0){
-      node_id=find_cores()$w_in[wp]
+      whole_network=network_modifier()
+      save(whole_network,file="whole_network2.rdata")
+      node_id=names(w_in)[wp]
       cps=common_pattern_single(whole_network,node_id,'in',input$Order)
       visNetwork(cps$nodes, cps$links)}}
- })
+})
+
+output$downloadNetwork3<-downloadHandler(
+  filename = function() {
+    "high-degree.txt"},
+  content = function(file) {
+    whole_network0=load_network()
+    if (!is.null(whole_network0)){
+      deg_in <- degree(whole_network0$g, mode="in")
+      w_in=which(deg_in>4)
+      rw=match(names(w_in),whole_network0$nodes$id)
+      labels=whole_network0$nodes$label[rw]
+      wp=which(labels==input$Cores)
+      if (length(wp)>0){
+        whole_network=network_modifier()
+        node_id=names(w_in)[wp]
+        cps=common_pattern_single(whole_network,node_id,'in',input$Order)
+        write.table(cps$edges,file,sep="\t",dec=",",row.names=F,col.names=T)}}}
+)
+
+find_chains <- eventReactive(input$goButton6,{
+  whole_network0=load_network()
+  all_chains=NULL
+  withProgress({
+  setProgress(message="Looking for long paths (length>3) in the network...")
+  Sys.sleep(1)
+  if (!is.null(whole_network0)){
+  all_chains=degrade_chain_all(whole_network0,3)
+  setProgress(message="All long paths are found! Please choose which chain you want to visualize!")}
+  else{setProgress(message="No long paths detected!")}
+  Sys.sleep(2)
+  })
+  all_chains
+})
  
- output$downloadAnnotation<-downloadHandler(
+observeEvent(input$goButton6,{
+  if (!is.null(find_chains())){
+  output$Chains <- renderUI({selectInput('Start', 'Choose chain that you want to visualize:',find_chains()$start_labels)})
+  }
+})
+
+observeEvent(input$Start,{
+  whole_network0=load_network()
+  if (!is.null(whole_network0)){
+    paths_list=find_chains()$paths
+    wp=which(find_chains()$start_labels==input$Start)
+    if (length(wp)>0){
+        whole_network=network_modifier()
+        path=paths_list[[wp]]
+        chains=generate_degrade_chain(whole_network,path)
+        output$networkPlot1 <- renderVisNetwork({visNetwork(chains$nodes, chains$links)})
+    }}
+})
+
+output$downloadNetwork1<-downloadHandler(
+  
+  filename = function() {
+    "chain.txt"},
+  content = function(file) {
+    whole_network0=load_network()
+    if (!is.null(whole_network0)){
+      paths_list=find_chains()$paths
+      wp=which(find_chains()$start_labels==input$Start)
+      if (length(wp)>0){
+        whole_network=network_modifier()
+        path=paths_list[[wp]]
+        chains=generate_degrade_chain(whole_network,path)
+        write.table(chains$edges,file,sep="\t",dec=",",row.names=F,col.names=T)}}}
+)
+
+output$downloadAnnotation<-downloadHandler(
    filename = function() {
      "annotation.txt"},
    content = function(file) {
@@ -349,69 +691,16 @@ shinyServer(function(input, output,clientData, session) {
   all_annotated= cbind(found$all_add,KEGG=annotated_cpd)     
   write.table(all_annotated, file,sep="\t",dec=",",row.names=F,col.names=T)}
 )
- 
- output$Shows <- renderUI({
-   found=find_annotation()
-   found=found$annotated
-   selectInput('Etiquette', 'Choose what to display when mouse on the nodes:',colnames(found$unique_add))
- })
- 
- output$Coloring <- renderUI({
-   found=find_annotation()
-   found=found$annotated
-   columns=c("<None>",colnames(found$unique_add))
-   selectInput('NetworkColor', 'Choose the variable for node coloring:',columns)
- })
- 
- 
- output$Coloring_nodes <- renderUI({
-   
-   found=find_annotation()
-   found=found$annotated
-   index=which(colnames(found$unique_add)==input$NetworkColor)
-   selected_vector=as.character(found$unique_add[,index])
-   modalities=unique(selected_vector)
-   selectInput('Modality', 'Choose which modality will be colored in red:',modalities)
- })
- 
- 
- output$downloadNetwork<-downloadHandler(
+
+output$downloadNetwork<-downloadHandler(
    
    filename = function() {
      "edges.txt"},
    content = function(file) {
      whole_network=load_network()
      write.table(whole_network$edges, file,sep="\t",dec=",",row.names=F,col.names=T)}
- )
+)
  
- output$downloadNetwork3<-downloadHandler(
-   
-   filename = function() {
-     "high-degree.txt"},
-   content = function(file) {
-     whole_network=load_network()
-     if (!is.null(whole_network)){
-       wp=which(find_cores()$labels==input$Cores)
-       node_id=find_cores()$w_in[wp]
-       cps=common_pattern_single(whole_network,node_id,'all',input$Order)
-       write.table(cps$edges,file,sep="\t",dec=",",row.names=F,col.names=T)}}
- )
- 
- output$downloadNetwork1<-downloadHandler(
-   
-   filename = function() {
-     "chain.txt"},
-   content = function(file) {
-     whole_network=load_network()
-     if (!is.null(whole_network)){
-       chains_list=find_chains()
-       paths_list=chains_list$paths
-       wp=which(chains_list$start_labels==input$Start)
-       path=paths_list[[wp]]
-       chains=generate_degrade_chain(whole_network,path)
-       write.table(chains$edges,file,sep="\t",dec=",",row.names=F,col.names=T)}}
- )
-
 output$Kegg_pathway <- renderUI({
   selectInput('pathway', 'Choose your pathway*:',kegg_paths[,2])
 })

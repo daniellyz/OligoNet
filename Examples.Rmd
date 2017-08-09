@@ -5,6 +5,7 @@
 #### Samples: Fermented yeast culture
 #### Platform: 12 T Bruker solariX FT-ICR-MS
 #### Scan mode: Positive
+#### Data pre-treatment: Elemental formulas annotated by the Kendrick mass difference network
 #### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-FT-Pos.txt" target="_blank"> File 1 </a>: Neutral exact mass; Intensity in 45 samples
 #### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Yeast-FT-Pos_additional.txt" target="_blank"> File 2 </a>: Elemental formula annotations; 1=Biomarker
 #### <a href= "https://link.springer.com/article/10.1007/s11306-016-1001-1" target="_blank"> Reference </a>
@@ -17,7 +18,7 @@
 #### Separation mode: Reversed-phase
 #### Scan mode: Positive mode
 #### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos.txt" target="_blank"> File 1 </a>: Neutral experimental mass (already corrected); Peak areas in 45 samples
-#### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Yeast-LC-Pos-additional.txt" target="_blank"> File 2 </a>: Retention times; 1=Biomarker
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Yeast-LC-Pos-additional.txt" target="_blank"> File 2 </a>: Retention times; 1=Biomarker
 #### <a href= "https://link.springer.com/article/10.1007/s11306-016-1001-1" target="_blank"> Reference </a>
 #### Contact: youzhong.liu@u-bourgogne.fr 
 
@@ -27,8 +28,8 @@
 #### Platform: Thermo UPLC + Bruker maXis II
 #### Separation mode: Reversed-phase
 #### Scan mode: Positive mode
-#### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Wine_data.txt" target="_blank"> File 1 </a>: Neutral experimental mass (already corrected); Peak areas in 10 replicate samples
-#### <a href="https://github.com/daniellyz/OligoNet/blob/master/Datasets/Wine_data_add.txt" target="_blank"> File 2 </a>: Retention times
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Wine_data.txt" target="_blank"> File 1 </a>: Neutral experimental mass (already corrected); Peak areas in 10 replicate samples
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/Wine_data_add.txt" target="_blank"> File 2 </a>: Retention times
 #### Contact: florian.bahut@u-bourgogne.fr
 
 ### Dataset 4: FT-ICR-MS-based urine metabolic profiling data
@@ -40,5 +41,16 @@
 #### <a href= "http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0074584" target="_blank"> Reference </a>
 #### Contact: marianna.lucio@helmholtz-muenchen.de
 
+### Dataset 5: HeLa label-free proteomics dataset PXD000612
+
+#### Samples: Cell culture
+#### Platform: Q-Exactive instrument
+#### Scan mode: Positive
+#### Data pre-treatment: The original masses in this dataset were theoritical values annotated by the human Uniprot FASTA database. To mimic the experimental conditions, a random error of 0.01 Da was added to each exact mass. 
+
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/PXD000612_simulated_exp.txt" target="_blank"> File 1 </a>:  Simulated positive ion masses; Intensity in all samples
+#### <a href="https://raw.githubusercontent.com/daniellyz/OligoNet/master/Datasets/PXD000612_add.txt" target="_blank"> File 2 </a>: Neutral exact masses, annotated informations from human Uniprot (Sequence, Length, Protein, Scores)
+#### <a href= "http://proteomecentral.proteomexchange.org/cgi/GetDataset?ID=PXD000612" target="_blank"> Reference </a>
+#### Contact: youzhong.liu@u-bourgogne.fr 
 
 

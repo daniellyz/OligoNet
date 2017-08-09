@@ -115,9 +115,15 @@ ppm_calc<-function(annotated_peptide,monomers,condensation,mass_exp){
   annotated_vector=composition_formula(annotated_peptide,monomers[,1])
   mass_theo=annotated_vector%*%monomers[,2]+condensation
   error=abs((mass_exp-mass_theo)/mass_theo)*1000000
-  error=as.character(round(error,1))
+  error=as.character(error)
   return(error)}
 
+ppm_calc1<-function(annotated_peptide,monomers,condensation,mass_exp){
+  annotated_vector=composition_formula(annotated_peptide,monomers[,1])
+  mass_theo=annotated_vector%*%monomers[,2]+condensation
+  error=abs((mass_exp-mass_theo)/mass_theo)*1000000
+  error=as.character(round(error,1))
+  return(error)}
 
 
 
