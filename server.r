@@ -34,7 +34,7 @@ monomers<-reactive({
     inFile3=input$file3
      
     if (is.null(inFile3)){
-      monomers=read.csv('https://raw.githubusercontent.com/daniellyz/OligoNet/master/amino-acid-complete.txt',sep='\t',dec='.',header=F,stringsAsFactors = F)}
+      monomers=read.csv('https://raw.githubusercontent.com/daniellyz/OligoNet/772674d90b927ecd1f28fa7c9c719506c39c1cf7/amino-acid-complete.txt',sep='\t',dec='.',header=F,stringsAsFactors = F)}
     else{monomers=read.csv(inFile3$datapath,sep='',dec='.',header=F,stringsAsFactors = F)}
     
     condensation=monomers[1,2]
