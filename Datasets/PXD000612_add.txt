@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ID	Mass	Sequence	Theoritical amino acid combination	Length	Proteins	Protein.names	Score
 155	775.41882	AAAISTSR	A3S2T1L1R1	8	Q9NVU7	Protein SDA1 homolog	93.162
 453	743.41775	AAEVLNK	A2V1L1N1K1E1	7	P52272-2	Heterogeneous nuclear ribonucleoprotein M	97.068
@@ -1002,4 +1001,3 @@ ID	Mass	Sequence	Theoritical amino acid combination	Length	Proteins	Protein.name
 147016	954.51747	YVIYIER	V1L2E1R1Y2	7	P61254	"60S ribosomal protein L26;60S ribosomal protein L26-like 1"	134.12
 147125	857.42832	YVTFNSK	S1V1T1N1K1F1Y1	7	Q9H2H9	Sodium-coupled neutral amino acid transporter 1	134.12
 147299	956.47158	YYGAQTVR	G1A1V1T1Q1R1Y2	8	P07954-2	Fumarate hydratase, mitochondrial	130.27
->>>>>>> 309cda3b773482d86fb85dc4072d1ba18a5671f9
