@@ -1,0 +1,50 @@
+TYPE	CPD	Delta.Mono.MW
+API	FLP	0
+Assay	FLP 2PO	-32.0263
+Assay	FLP 1PO	-15.9772
+Assay	FLP metC	14.0156
+Assay	Na (+22)	21.975325
+Assay	K (+39)	37.975325
+Assay	ADP	41.02654
+Assay	IDP	69.05784
+Assay	AMPA	98.03678
+Assay	dmt	302.1306
+additional	FLP(-53)	-53.024675
+additional	Dehydrofluorination (-20)	-20.0063
+additional	Oxydefluorination (-2)	-2.024675
+additional	Thioate (+16)	15.9771
+additional	FLP+H2O (+18)	17.975325
+additional	Formyl (+28)	27.975325
+additional	Acetyl (+43)	42.975325
+additional	CNET (+53)	53.0265
+additional	isoButyryl (+70)	70.0418
+additional	Benzoyl (+105)	104.0262
+additional	Phenylacetyl (+118)	117.975325
+additional	Chloral (+146)	145.909
+additional	UnyLinker PO (+263)	262.975325
+additional	UnyLinker PS (+279)	278.975325
+additional	add H2O	-305.037
+additional	formyl	-304.037
+additional	2NPO	-303.037
+additional	loss H2O	-302.037
+additional	acetyl	-301.037
+additional	phenylacetyl	-296.037
+additional	depyrym -U	-295.037
+additional	loss abasic	-287.037
+additional	depyrym -C	-275.037
+Depurinated	FLP-Gua	-133.0389
+Depurinated	FLP-Ade	-117.044
+Depyrimidated	FLP-Ura/FLP-Cyt	-94.524675
+Long-Mer	FLP+Cf OPO/FLP+Uf OPO	308.475325
+Long-Mer	FLP+C OPO/FLP+U OPO	320.475325
+Long-Mer	FLP+Af OPO	331.475325
+Long-Mer	FLP+Gf OPO	347.475325
+Long-Mer	FLP+A OPS/FLP+G OPO	359.0454
+Long-Mer	FLP+Gf OPS	363.475325
+Short-Mer	FLP-Gf OPS	-363.024675
+Short-Mer	FLP-A OPS/FLP-G OPO	-359.0454
+Short-Mer	FLP-Gf OPO	-347.024675
+Short-Mer	3' shortmer (Cs)	-335.0342
+Short-Mer	FLP-Af OPO	-331.024675
+Short-Mer	FLP-C OPO/FLP-U OPO	-320.041
+Short-Mer	FLP-Cf OPO/FLP-Uf OPO	-307.037
