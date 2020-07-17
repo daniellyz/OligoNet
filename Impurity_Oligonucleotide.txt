@@ -19,12 +19,12 @@ additional	FLP-H2O (-18)	-18.0105
 additional	Formyl (+28)	27.9949
 additional	Formyl (-28)	-27.9949
 additional	Acetyl (+43)	42.0105
-additional	Acetyl (-43)	42.0105
+additional	Acetyl (-43)	-42.0105
 additional	FLP-OMe (-32)	-32.0238	
 additional	isoButyryl (+70)	70.0462
 additional	Benzoyl (+105)	104.0262
 additional	Phenylacetyl (+118)	117.975325
-additional	Phenylacetyl (-118)	117.975325
+additional	Phenylacetyl (-118)	-117.975325
 additional	Chloral (+146)	145.9062
 additional	UnyLinker PO (+263)	262.975325
 additional	UnyLinker PS (+279)	278.975325
