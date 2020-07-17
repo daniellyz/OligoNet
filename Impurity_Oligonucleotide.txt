@@ -29,16 +29,25 @@ additional	Chloral (+146)	145.9062
 additional	UnyLinker PO (+263)	262.975325
 additional	UnyLinker PS (+279)	278.975325
 additional	2NPO	-31.9544
-Depurinated	loss abasic	-195.9959
+additional	loss abasic	-195.9959
 Depurinated	depyrym -U	-94.0167
 Depurinated	depyrym -C	-93.0327
 Depurinated	FLP-Gua	-133.0438
 Depurinated	FLP-Ade	-117.0438
+Depurinated	FLP-Ura/FLP-Cyt	-94.524675
 Shortmer	FLP-(U)	-320.041
 Shortmer	FLP-(Cf)	-307.037
 Shortmer	FLP-3'(Cs)	-335.0342
 Shortmer	FLP-5'(As)	-359.0454
+Shortmer	FLP-Gf OPS	-363.0247
+Shortmer	FLP-Gf OPO	-347.0247
+Shortmer	FLP-Af OPO	-331.0247
 Longmer	FLP+(U)	320.041
 Longmer	FLP+(Cf)	307.037
 Longmer	FLP+3'(Cs)	335.0342
 Longmer	FLP+5'(As)	359.0454
+Longmer	FLP+Cf OPO/FLP+Uf OPO	308.475325
+Longmer	FLP+C OPO/FLP+U OPO	320.475325
+Longmer	FLP+Af OPO	331.475325
+Longmer	FLP+Gf OPO	347.475325
+Longmer	FLP+Gf OPS	363.475325
