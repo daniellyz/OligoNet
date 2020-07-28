@@ -1,53 +1,49 @@
-TYPE	CPD	Delta.Mono.MW
-API	FLP	0
-Assay	FLP 2PO	-32.0263
-Assay	FLP 1PO	-15.9772
-Assay	FLP metC	14.0156
-Assay	Na (+22)	21.975325
-Assay	K (+39)	37.975325
-Assay	ADP	41.02654
-Assay	IDP	69.05784
-Assay	AMPA	98.03678
-Assay	dmt	302.1306
-additional	CNET (+53)	53.0265
-additional	FLP(-53)	-53.024675
-additional	Dehydrofluorination (-20)	-20.0062
-additional	Oxydefluorination (-2)	-1.9956
-additional	Thioate (+16)	15.9771
-additional	FLP+H2O (+18)	18.0105
-additional	FLP-H2O (-18)	-18.0105
-additional	Formyl (+28)	27.9949
-additional	Formyl (-28)	-27.9949
-additional	Acetyl (+43)	42.0105
-additional	Acetyl (-43)	-42.0105
-additional	FLP-OMe (-32)	-32.0238	
-additional	isoButyryl (+70)	70.0462
-additional	Benzoyl (+105)	104.0262
-additional	Phenylacetyl (+118)	117.975325
-additional	Phenylacetyl (-118)	-117.975325
-additional	Chloral (+146)	145.9062
-additional	UnyLinker PO (+263)	262.975325
-additional	UnyLinker PS (+279)	278.975325
-additional	2NPO	-31.9544
-additional	loss abasic	-195.9959
-Depurinated	depyrym -U	-94.0167
-Depurinated	depyrym -C	-93.0327
-Depurinated	FLP-Gua	-133.0438
-Depurinated	FLP-Ade	-117.0438
-Depurinated	FLP-Ura/FLP-Cyt	-94.524675
-Shortmer	FLP-(U)	-320.041
-Shortmer	FLP-(Cf)	-307.037
-Shortmer	FLP-3'(Cs)	-335.0342
-Shortmer	FLP-5'(As)	-359.0454
-Shortmer	FLP-Gf OPS	-363.0247
-Shortmer	FLP-Gf OPO	-347.0247
-Shortmer	FLP-Af OPO	-331.0247
-Longmer	FLP+(U)	320.041
-Longmer	FLP+(Cf)	307.037
-Longmer	FLP+3'(Cs)	335.0342
-Longmer	FLP+5'(As)	359.0454
-Longmer	FLP+Cf OPO/FLP+Uf OPO	308.475325
-Longmer	FLP+C OPO/FLP+U OPO	320.475325
-Longmer	FLP+Af OPO	331.475325
-Longmer	FLP+Gf OPO	347.475325
-Longmer	FLP+Gf OPS	363.475325
+TYPE	CPD	Delta.Mono.MW	Delta.AVG.MW	Delta.Formula
+API	FLP	0	0	"N/A"
+Adduct	Na (+22)	21.98194	21.9819	"+Na-H"
+Adduct	K (+39)	37.95588	38.0904	"+K-H"
+Internucleotide	FLP 1PO	-15.9772	-16.0654	"-S+O"
+Internucleotide	FLP 2PO	-31.9544	-32.1308	"-2S+2O"
+Internucleotide	FLP 1PS/Thioate	15.9772	16.0654	"-O+S"
+Internucleotide	FLP 2PS/Thioate	32.0263	32.1308	"-2O+2S"
+Internucleotide	CNET (+53)	53.0265	53.0627	"+C3H3N"
+Internucleotide	Chloral (+146)	145.9093	147.3871	"+C2Cl3OH"
+Internucleotide	UnyLinker PO (+263)	263.0195	263.1403	"+C8H10NO7P"
+Internucleotide	UnyLinker PS (+279)	278.9966	279.205	"+C8H10NO6SP"
+Base	FLP+H2O (+18)	18.0106	18.0153	"+H2O"
+Base	FLP-H2O (-18)	-18.0106	-18.0153	"-H2O"
+Base	metC	14.0157	14.0266	"+CH2"
+Base	ADP	41.0265	41.0518	"+C2H3N"
+Base	IDP	69.0578	69.1051	"+C4H7N"
+Base	AMPA	98.03678	98.1	"+C5H6O2"
+Base	Formyl (+28)	27.9949	28.0101	"+CO"
+Base	Acetyl (+43)	42.0106	42.0366	"+C2H2O"
+Base	isoButyryl (+70)	70.0419	70.0896	"+C4H6O"
+Base	Benzoyl (+105)	104.0262	104.1061	"+C7H4O"
+Base	Phenylacetyl (+118)	118.0419	118.1325	"+C8H6O"
+Sugar	dmt	302.1306	302.3667	"+C21H18O2"
+Sugar	Dehydrofluorination (-20)	-20.0062	-20.0063	"-HF"
+Sugar	Oxydefluorination (-2)	-1.9957	-1.9911	"-F+OH"
+Sugar	FLP-OMe (-32)	-32.0262	-32.0418	"-CH4O"
+Depurination	Depyrym -C	-93.0327	-93.0867	"-C4H5N3O+H2O"
+Depurination	Depyrym -U	-94.0167	-94.0712	"-C4H4N2O2+H2O"
+Depurination	Depyrym -G	-133.0388	-133.1109	"-C5H5N5O+H2O"
+Depurination	Depyrym -A	-117.0439	-117.1115	"-C5H5N5+H2O"
+Shortmer	FLP-(C)	-319.0569	-319.208	"-C10H14N3O7P"
+Shortmer	FLP-(Cf)	-307.037	-307.172	"-C9H11FN3O6P"
+Shortmer	FLP-(U)	-320.041	-320.193	"-C10H13N2O8P"
+Shortmer	FLP-(Uf)	-308.021	-308.157	"-C9H10FN2O7P"
+Shortmer	FLP-(G)	-359.0631	-359.232	"-C11H14N5O7P"
+Shortmer	FLP-(Gf)	-347.043	-347.196	"-C10H11FN5O6P"
+Shortmer	FLP-(A)	-343.0682	-343.233	"-C11H14N5O6P"
+Shortmer	FLP-(Af)	-331.0247	-331.197	"-C10H11FN5O5P"
+Longmer	FLP+(C)	319.0569	319.208	"+C10H14N3O7P"
+Longmer	FLP+(Cf)	307.037	307.172	"+C9H11FN3O6P"
+Longmer	FLP+(U)	320.041	320.193	"+C10H13N2O8P"
+Longmer	FLP+(Uf)	308.021	308.157	"+C9H10FN2O7P"
+Longmer	FLP+(G)	359.0631	359.232	"+C11H14N5O7P"
+Longmer	FLP+(Gf)	347.043	347.196	"+C10H11FN5O6P"
+Longmer	FLP+(A)	343.0682	343.233	"+C11H14N5O6P"
+Longmer	FLP+(Af)	331.0247	331.197	"+C10H11FN5O5P"
+DrugLinker	Acetyl (-43)	-42.0106	-42.0366	"-C2H2O"
+Abasic	Loss abasic	-196.0137	-196.0948	"-C5H9O6P"
